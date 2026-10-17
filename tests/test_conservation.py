@@ -25,15 +25,23 @@ def roundoff_tol(res):
     return 10 * EPS * scale * np.sqrt(res.x.size * res.n_steps)
 
 
+SCHEMES = [("rusanov", "none"), ("hllc", "vanleer"), ("roe", "superbee")]
+
+
+@pytest.mark.parametrize("flux,limiter", SCHEMES)
 @pytest.mark.parametrize("name", ["sod", "123", "blast", "modsod"])
-def test_periodic_totals_constant(name):
-    res = solve(CASES[name], N=200, flux="rusanov", bc="periodic")
+def test_periodic_totals_constant(name, flux, limiter):
+    if name == "123" and flux == "roe":
+        pytest.skip("Roe loses positivity on the 123 problem (spec §6.5b)")
+    res = solve(CASES[name], N=200, flux=flux, limiter=limiter, bc="periodic")
     drift = totals(res.U, res.dx) - totals(res.U0, res.dx)
     assert np.all(np.abs(drift) <= roundoff_tol(res)), f"drift = {drift}"
 
 
-def test_transmissive_sod_budget_closes():
-    res = solve(CASES["sod"], N=200, flux="rusanov", bc="transmissive")
+@pytest.mark.parametrize("flux,limiter", SCHEMES)
+def test_transmissive_sod_budget_closes(flux, limiter):
+    """First order uses forward Euler; second order uses SSP-RK2 with stage weights 1/2, 1/2."""
+    res = solve(CASES["sod"], N=200, flux=flux, limiter=limiter, bc="transmissive")
     change = totals(res.U, res.dx) - totals(res.U0, res.dx)
     # Momentum genuinely changes by about (p_L - p_R) t = 0.225, so this is a real check.
     assert abs(change[1]) > 0.2

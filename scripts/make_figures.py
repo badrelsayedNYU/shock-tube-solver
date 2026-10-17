@@ -143,6 +143,31 @@ def fig_positivity_123(N=100):
     print(f"wrote {out}")
 
 
+def fig_first_vs_second_order_sod(N=100):
+    """HLLC on Sod: first order vs. MUSCL + SSP-RK2 with van Leer and superbee (milestone 4)."""
+    case = CASES["sod"]
+    x = np.linspace(0.0, 1.0, 4001)
+    W = exact_solution(x, case.t_end, case.WL, case.WR, case.x0, case.gamma)
+
+    fig, axes = plt.subplots(2, 2, figsize=(9, 6.5), sharex=True, layout="constrained")
+    plot_profiles(axes, x, W, case.gamma, color="black", lw=1.5, label="Exact")
+    for limiter, marker, color, label in (
+            ("none", "o", "tab:gray", "1st order (CFL 0.8)"),
+            ("vanleer", "s", "tab:blue", "MUSCL van Leer + SSP-RK2 (CFL 0.5)"),
+            ("superbee", "^", "tab:red", "MUSCL superbee + SSP-RK2 (CFL 0.5)")):
+        res = solve(case, N=N, flux="hllc", limiter=limiter)
+        plot_profiles(axes, res.x, res.W, case.gamma, ls="none", marker=marker, ms=3.5,
+                      mfc="none", color=color, label=f"HLLC, {label}")
+    label_axes(axes)
+    axes[0, 0].legend(loc="lower left", fontsize=7.5)
+    fig.suptitle(f"Sod, $t = {case.t_end}$, $N = {N}$: first vs. second order (HLLC flux)\n"
+                 r"(nondimensional units, $\gamma = %.1f$)" % case.gamma)
+    out = FIG_DIR / "sod_first_vs_second_order.png"
+    fig.savefig(out)
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def main():
     FIG_DIR.mkdir(exist_ok=True)
     for name in CASES:
@@ -150,6 +175,7 @@ def main():
     fig_first_order_rusanov_sod()
     fig_expansion_shock()
     fig_positivity_123()
+    fig_first_vs_second_order_sod()
 
 
 if __name__ == "__main__":
