@@ -18,6 +18,10 @@ NG = 2  # ghost cells per side
 class PositivityError(RuntimeError):
     """Raised when a cell reaches rho <= 0 or p <= 0 (or NaN) during the run."""
 
+    def __init__(self, message, t, cell, x, rho, p):
+        super().__init__(message)
+        self.t, self.cell, self.x, self.rho, self.p = t, cell, x, rho, p
+
 
 @dataclass
 class Result:
@@ -66,7 +70,8 @@ def check_positivity(U, x, t, gamma=GAMMA, stage=""):
         i = int(np.argmax(bad))
         raise PositivityError(
             f"non-physical state at t = {t:.6g}{stage}: cell {i} (x = {x[i]:.4f}), "
-            f"rho = {rho[i]:.4g}, p = {p[i]:.4g}"
+            f"rho = {rho[i]:.4g}, p = {p[i]:.4g}",
+            t=t, cell=i, x=x[i], rho=rho[i], p=p[i],
         )
 
 
