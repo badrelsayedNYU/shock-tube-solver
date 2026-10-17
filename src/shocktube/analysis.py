@@ -20,6 +20,12 @@ def observed_order(N, errors):
     return -np.polyfit(np.log(N), np.log(errors), 1)[0]
 
 
+def drop_across(result, x_face, var=0):
+    """q_{i-1} - q_i for the two cells on either side of the face nearest x_face."""
+    i = int(np.searchsorted(result.x, x_face))
+    return result.W[var][i - 1] - result.W[var][i]
+
+
 def sod_wave_positions(case, t):
     """Positions at time t of the fan tail, contact and shock for a left-fan / right-shock
     problem such as Sod (Toro §4.5 wave speeds)."""

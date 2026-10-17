@@ -11,8 +11,9 @@ from pathlib import Path
 
 import numpy as np
 
-from shocktube.analysis import l1_error, sod_resolution
+from shocktube.analysis import drop_across, l1_error, sod_resolution
 from shocktube.cases import CASES
+from shocktube.exact import exact_solution
 from shocktube.solver import solve
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -67,6 +68,34 @@ def main():
         lines.append(f"| {r['flux']} | {r['limiter']} | {l1} | {r['runtime_ms']:.1f} | {r['steps']} "
                      f"| {r['shock_cells']} | {r['contact_cells']} |")
     out = ROOT / "results" / "comparison_sod_N400.md"
+    out.write_text("\n".join(lines) + "\n")
+    print(f"wrote {out}")
+    entropy_fix_sweep()
+
+
+def entropy_fix_sweep(N=100):
+    """§6.5a: density drop across the two cells at the sonic point (x0) on Case 4, first-order Roe,
+    for several Harten-fix widths delta = k * a~, compared with exact, HLLC and Rusanov."""
+    case = CASES["modsod"]
+    x = np.array([case.x0 - 0.5 / N, case.x0 + 0.5 / N])
+    exact = exact_solution(x, case.t_end, case.WL, case.WR, case.x0, case.gamma)[0]
+    runs = [("Exact solution (sampled at the two cell centers)", None, None),
+            ("Roe, no entropy fix", "roe", {"entropy_fix": False}),
+            ("Roe + Harten fix, delta = 0.1 a~ (default)", "roe", {"delta_factor": 0.1}),
+            ("Roe + Harten fix, delta = 0.2 a~", "roe", {"delta_factor": 0.2}),
+            ("Roe + Harten fix, delta = 0.3 a~", "roe", {"delta_factor": 0.3}),
+            ("HLLC", "hllc", None),
+            ("Rusanov", "rusanov", None)]
+    lines = [f"Modified Sod (Case 4), first order, N = {N}, t = {case.t_end}. "
+             f"Density drop between the two cells adjacent to x0 = {case.x0} (the sonic point).",
+             "", "| Scheme | Density drop at sonic point | L1 error (rho) |", "|---|---|---|"]
+    for label, flux, kw in runs:
+        if flux is None:
+            lines.append(f"| {label} | {exact[0] - exact[1]:.4f} | - |")
+            continue
+        res = solve(case, N=N, flux=flux, flux_kwargs=kw)
+        lines.append(f"| {label} | {drop_across(res, case.x0):.4f} | {l1_error(res, case):.3e} |")
+    out = ROOT / "results" / "entropy_fix_sweep_modsod.md"
     out.write_text("\n".join(lines) + "\n")
     print(f"wrote {out}")
 
