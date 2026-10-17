@@ -11,6 +11,7 @@ import numpy as np
 from shocktube.cases import CASES
 from shocktube.exact import exact_solution
 from shocktube.gas import internal_energy
+from shocktube.solver import solve
 
 FIG_DIR = Path(__file__).resolve().parent.parent / "figures"
 
@@ -56,10 +57,34 @@ def fig_exact(case_name):
     print(f"wrote {out}")
 
 
+def fig_first_order_rusanov_sod():
+    """First-order Rusanov on Sod at two resolutions vs. exact (milestone 2)."""
+    case = CASES["sod"]
+    x = np.linspace(0.0, 1.0, 4001)
+    W = exact_solution(x, case.t_end, case.WL, case.WR, case.x0, case.gamma)
+
+    fig, axes = plt.subplots(2, 2, figsize=(9, 6.5), sharex=True, layout="constrained")
+    plot_profiles(axes, x, W, case.gamma, color="black", lw=1.5, label="Exact")
+    for N, marker, color in ((100, "o", "tab:blue"), (400, ".", "tab:orange")):
+        res = solve(case, N=N, flux="rusanov")
+        plot_profiles(axes, res.x, res.W, case.gamma, ls="none", marker=marker, ms=3,
+                      mfc="none" if marker == "o" else color, color=color,
+                      label=f"Rusanov, 1st order, $N = {N}$")
+    label_axes(axes)
+    axes[0, 0].legend(loc="best", fontsize=8)
+    fig.suptitle(f"Sod, $t = {case.t_end}$: first-order Rusanov vs. exact\n"
+                 r"(nondimensional units, $\gamma = %.1f$, CFL = 0.8)" % case.gamma)
+    out = FIG_DIR / "sod_rusanov_first_order.png"
+    fig.savefig(out)
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def main():
     FIG_DIR.mkdir(exist_ok=True)
     for name in CASES:
         fig_exact(name)
+    fig_first_order_rusanov_sod()
 
 
 if __name__ == "__main__":
