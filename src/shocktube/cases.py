@@ -41,11 +41,19 @@ CASES = {
         x0=0.5,
         t_end=0.012,
     ),
+    "modsod": RiemannCase(
+        name="modsod",
+        description="Modified Sod (Toro): transonic rarefaction",
+        WL=(1.0, 0.75, 1.0),
+        WR=(0.125, 0.0, 0.1),
+        x0=0.3,
+        t_end=0.2,
+    ),
 }
 
 
 def get_case(name):
-    """Look up a test case by name ('sod', '123', 'blast')."""
+    """Look up a test case by name ('sod', '123', 'blast', 'modsod')."""
     try:
         return CASES[name]
     except KeyError:
