@@ -1,0 +1,13 @@
+flux,limiter,l1,runtime_ms,steps,shock_cells,contact_cells
+rusanov,none,0.0112553,14.687,272,4,49
+rusanov,minmod,0.00314102,44.0909,437,4,17
+rusanov,vanleer,0.00208928,44.5993,438,3,10
+rusanov,superbee,0.00183846,48.0322,445,2,4
+roe,none,0.0066091,21.2535,273,4,28
+roe,minmod,0.00245727,65.449,437,4,13
+roe,vanleer,0.00160583,66.4062,438,3,9
+roe,superbee,0.00090018,69.8035,442,2,4
+hllc,none,0.00675824,24.7308,273,4,28
+hllc,minmod,0.00249731,75.4322,437,4,13
+hllc,vanleer,0.00169243,75.4338,438,3,9
+hllc,superbee,0.000968636,79.7065,442,2,3

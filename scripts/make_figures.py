@@ -1,4 +1,4 @@
-"""Regenerate every README figure into figures/.
+"""Regenerate every README figure (figures/) and table (results/).
 
 Usage: python scripts/make_figures.py
 """
@@ -8,6 +8,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
+import comparison
+import convergence
 from shocktube.cases import CASES
 from shocktube.exact import exact_solution
 from shocktube.gas import internal_energy
@@ -168,14 +170,62 @@ def fig_first_vs_second_order_sod(N=100):
     print(f"wrote {out}")
 
 
+def fig_overlay(case_name, N=100, limiter="vanleer"):
+    """§6.1: rho, u, p, e (rows) for each flux (columns): exact, first order, second order."""
+    case = CASES[case_name]
+    g = case.gamma
+    x = np.linspace(0.0, 1.0, 4001)
+    We = exact_solution(x, case.t_end, case.WL, case.WR, case.x0, g)
+    fluxes = (("rusanov", "Rusanov"), ("roe", "Roe (+ Harten fix)"), ("hllc", "HLLC"))
+    ylabels = (r"$\rho$", r"$u$", r"$p$", r"$e$")
+
+    def rows(W):
+        return W[0], W[1], W[2], internal_energy(W[0], W[2], g)
+
+    fig, axes = plt.subplots(4, 3, figsize=(11, 10), sharex=True, sharey="row",
+                             layout="constrained")
+    for col, (flux, title) in enumerate(fluxes):
+        axes[0, col].set_title(title)
+        for ax, y in zip(axes[:, col], rows(We)):
+            ax.plot(x, y, color="black", lw=1.3, label="Exact")
+        for lim, marker, color, label in (("none", "o", "tab:gray", "1st order"),
+                                          (limiter, "s", "tab:blue", f"MUSCL {limiter} + SSP-RK2")):
+            try:
+                res = solve(case, N=N, flux=flux, limiter=lim)
+            except PositivityError as err:
+                axes[3 if lim == "none" else 2, col].text(
+                    0.5, 0.5, f"{label}: FAILED\n$p < 0$ at $t$ = {err.t:.2g}, x = {err.x:.3f}",
+                    transform=axes[3 if lim == "none" else 2, col].transAxes, ha="center",
+                    va="center", fontsize=8, color="tab:red",
+                    bbox=dict(facecolor="white", edgecolor="tab:red"))
+                continue
+            for ax, y in zip(axes[:, col], rows(res.W)):
+                ax.plot(res.x, y, ls="none", marker=marker, ms=2.8, mfc="none", color=color,
+                        label=label)
+    for ax, lab in zip(axes[:, 0], ylabels):
+        ax.set_ylabel(lab)
+    for ax in axes[-1]:
+        ax.set_xlabel(r"Position $x$")
+    axes[0, 0].legend(fontsize=7.5, loc="best")
+    fig.suptitle(f"{case.description}, $t = {case.t_end}$, $N = {N}$\n"
+                 r"(nondimensional units, $\gamma = %.1f$; $e = p/((\gamma-1)\rho)$)" % g)
+    out = FIG_DIR / f"overlay_{case_name}.png"
+    fig.savefig(out)
+    plt.close(fig)
+    print(f"wrote {out}")
+
+
 def main():
     FIG_DIR.mkdir(exist_ok=True)
     for name in CASES:
         fig_exact(name)
+        fig_overlay(name)
     fig_first_order_rusanov_sod()
     fig_expansion_shock()
     fig_positivity_123()
     fig_first_vs_second_order_sod()
+    convergence.main()
+    comparison.main()
 
 
 if __name__ == "__main__":
