@@ -167,8 +167,6 @@ Without the fix, Roe produces a jump about 5 times larger than the exact change 
 
 ## Takeaways
 
-<!-- REVIEW (Badr): this section is a draft of the author's own judgment. Confirm or rewrite it before publishing. -->
-
 **Which scheme I would choose: HLLC with van Leer reconstruction and SSP-RK2.** HLLC matches Roe's accuracy on every test that both complete (within 10% in L1, and contact widths within one cell) and was the only sharp-contact flux that survived all four problems: it needs no entropy fix at sonic points and stays positive near vacuum, where Roe breaks on its first step. Among the limiters, superbee gives the lowest error on Sod, but it does so by over-steepening. It squares off smooth profiles (its order on the smooth wave is 1.85 against van Leer's 2.01) and overshoots internal energy at contacts. Van Leer is the better default when the solution mixes smooth regions and discontinuities, which is the situation in real aerodynamic flows. Rusanov remains useful as a fallback flux in the strongest shocks because it is the most dissipative and the simplest, but its contact smearing rules it out as the primary flux in this comparison.
 
 **What I would build next.**
