@@ -1,0 +1,835 @@
+<title>Shock Tube Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lab bench. Controls rail on the left, four instrument plots and a tube view on the right; stacks on phones. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --ink: #142029;
+  --muted: #586572;
+  --rule: #d3d9e0;
+  --grid: #e6eaee;
+  --a: #1d4ed8;
+  --b: #c2531a;
+  --bad: #b42318;
+  --bad-bg: #fdecea;
+  --good: #1d7a46;
+  --chip: #e1e6ec;
+  --font-display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1218; --surface: #141b23; --ink: #e4e9ee; --muted: #93a0ad; --rule: #26313c; --grid: #1c252f;
+    --a: #7d9cff; --b: #f0884a; --bad: #ff7b6e; --bad-bg: #3a1714; --good: #5fd08f; --chip: #1e2731;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1218; --surface: #141b23; --ink: #e4e9ee; --muted: #93a0ad; --rule: #26313c; --grid: #1c252f;
+  --a: #7d9cff; --b: #f0884a; --bad: #ff7b6e; --bad-bg: #3a1714; --good: #5fd08f; --chip: #1e2731;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1240px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; letter-spacing: 0.01em; margin: 0; line-height: 1.05; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
+.src { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
+.src a { color: var(--a); }
+.layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 880px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
+.rail { display: grid; gap: 18px; }
+.label { font-family: var(--font-display); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 0.86rem var(--font-body); border: 1px solid transparent; background: var(--chip); color: var(--ink); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+.chip:hover { border-color: var(--rule); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.chip.warn { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+.chip.warn[aria-pressed="true"] { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+.scheme { display: grid; grid-template-columns: 14px 1fr 1fr; gap: 6px; align-items: center; }
+.scheme + .scheme { margin-top: 8px; }
+.sw { width: 12px; height: 12px; border-radius: 50%; background: var(--a); }
+.sw.b { background: transparent; border: 2px solid var(--b); }
+select, input[type="number"] {
+  font: 500 0.86rem var(--font-body); color: var(--ink); background: var(--bg); border: 1px solid var(--rule);
+  border-radius: 4px; padding: 5px 6px; width: 100%; min-width: 0;
+}
+input[type="number"] { font-family: var(--font-mono); font-size: 0.8rem; }
+.row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.check { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; }
+.seg { display: flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button { flex: 1; font: 500 0.82rem var(--font-mono); background: var(--bg); color: var(--ink); border: 0; border-right: 1px solid var(--rule); padding: 6px 0; cursor: pointer; }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.custom { display: grid; grid-template-columns: auto 1fr 1fr 1fr; gap: 6px; align-items: center; font-size: 0.82rem; }
+.custom .h { font-family: var(--font-mono); color: var(--muted); text-align: center; font-size: 0.78rem; }
+.custom2 { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px; align-items: center; font-size: 0.82rem; margin-top: 6px; }
+.err { color: var(--bad); font-size: 0.84rem; margin: 6px 0 0; }
+.hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
+:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
+
+.main { display: grid; gap: 14px; min-width: 0; }
+.note { border-left: 3px solid var(--ink); padding: 2px 0 2px 12px; max-width: 75ch; }
+.note h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0 0 2px; }
+.note p { margin: 0; color: var(--muted); }
+.note.warn { border-left-color: var(--bad); }
+.banner { background: var(--bad-bg); color: var(--bad); border-radius: 4px; padding: 8px 12px; font-size: 0.9rem; }
+.banner code { font-family: var(--font-mono); font-size: 0.82rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.86rem; align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.ln { width: 22px; height: 2px; background: var(--ink); display: inline-block; }
+.tube-wrap { display: grid; gap: 4px; }
+.tube-cap { display: flex; justify-content: space-between; gap: 8px; font-size: 0.78rem; color: var(--muted); font-family: var(--font-mono); }
+.tube-cap .mid { flex: 1; min-width: 0; text-align: center; }
+canvas { display: block; width: 100%; }
+#tube { height: 38px; }
+.plots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .plots { grid-template-columns: minmax(0, 1fr); } }
+.plots canvas { height: 210px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+.transport { display: flex; align-items: center; gap: 12px; }
+.play { font: 600 0.86rem var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; background: var(--ink); color: var(--surface); border: 0; border-radius: 4px; padding: 7px 14px; cursor: pointer; min-width: 74px; }
+input[type="range"] { flex: 1; min-width: 0; accent-color: var(--a); }
+.tread { font-family: var(--font-mono); font-size: 0.82rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.86rem; }
+th { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.74rem; color: var(--muted); text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.num { font-family: var(--font-mono); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.pill { font: 600 0.74rem var(--font-display); letter-spacing: 0.05em; text-transform: uppercase; padding: 2px 7px; border-radius: 3px; }
+.pill.ok { color: var(--good); background: color-mix(in srgb, var(--good) 14%, transparent); }
+.pill.fail { color: var(--bad); background: color-mix(in srgb, var(--bad) 14%, transparent); }
+footer { color: var(--muted); font-size: 0.82rem; max-width: 80ch; }
+footer a { color: var(--a); }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Shock Tube Lab</h1>
+      <p class="sub">A finite-volume solver for the 1D Euler equations running in your browser, plotted against the exact Riemann solution. Pick an experiment, change the scheme, and watch the shock, contact and expansion fan develop.</p>
+    </div>
+    <div class="src">port of <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">badrelsayedNYU/shock-tube-solver</a></div>
+  </header>
+
+  <div class="layout">
+    <aside class="rail">
+      <section class="panel">
+        <p class="label">Experiment</p>
+        <div class="chips" id="presets"></div>
+        <div id="customBox" hidden>
+          <p class="label" style="margin-top:14px">Initial states</p>
+          <div class="custom">
+            <span></span><span class="h">ρ</span><span class="h">u</span><span class="h">p</span>
+            <span>Left</span>
+            <input type="number" id="rL" step="any" aria-label="Left density">
+            <input type="number" id="uL" step="any" aria-label="Left velocity">
+            <input type="number" id="pL" step="any" aria-label="Left pressure">
+            <span>Right</span>
+            <input type="number" id="rR" step="any" aria-label="Right density">
+            <input type="number" id="uR" step="any" aria-label="Right velocity">
+            <input type="number" id="pR" step="any" aria-label="Right pressure">
+          </div>
+          <div class="custom2">
+            <span>x₀</span><input type="number" id="x0" step="0.05" min="0.05" max="0.95" aria-label="Diaphragm position">
+            <span>t end</span><input type="number" id="tEnd" step="any" min="0" aria-label="End time">
+          </div>
+          <p class="err" id="customErr" hidden></p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="label">Schemes</p>
+        <div class="scheme">
+          <span class="sw" aria-hidden="true"></span>
+          <select id="fluxA" aria-label="Scheme A flux"></select>
+          <select id="limA" aria-label="Scheme A reconstruction"></select>
+        </div>
+        <div class="scheme" id="rowB">
+          <span class="sw b" aria-hidden="true"></span>
+          <select id="fluxB" aria-label="Scheme B flux"></select>
+          <select id="limB" aria-label="Scheme B reconstruction"></select>
+        </div>
+        <label class="check" style="margin-top:10px"><input type="checkbox" id="compare"> Compare with a second scheme</label>
+        <div id="roeBox" style="margin-top:12px">
+          <p class="label">Roe entropy fix</p>
+          <div class="row">
+            <label class="check"><input type="checkbox" id="fix"> Harten fix</label>
+            <select id="delta" aria-label="Harten delta" style="width:auto">
+              <option value="0.1">δ = 0.1 ã</option><option value="0.2">δ = 0.2 ã</option><option value="0.3">δ = 0.3 ã</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <p class="label">Grid cells, N</p>
+        <div class="seg" id="gridSeg"></div>
+        <p class="hint">No limiter runs first order with forward Euler at CFL 0.8. Any limiter runs MUSCL with SSP-RK2 at CFL 0.5.</p>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="note" id="note"><h2></h2><p></p></div>
+      <div class="banner" id="banner" hidden></div>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="tube-wrap">
+        <canvas id="tube" aria-label="Tube view: density along the tube for scheme A"></canvas>
+        <div class="tube-cap"><span>x = 0</span><span class="mid">tube view: density, scheme A · dashed line = diaphragm</span><span>x = 1</span></div>
+      </div>
+
+      <div class="plots">
+        <canvas id="pRho" aria-label="Density plot"></canvas>
+        <canvas id="pU" aria-label="Velocity plot"></canvas>
+        <canvas id="pP" aria-label="Pressure plot"></canvas>
+        <canvas id="pE" aria-label="Internal energy plot"></canvas>
+      </div>
+
+      <div class="transport">
+        <button class="play" id="play" type="button">Play</button>
+        <input type="range" id="scrub" min="0" max="80" value="80" aria-label="Time">
+        <span class="tread" id="tread"></span>
+      </div>
+
+      <section class="panel">
+        <p class="label">Results at the final time</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Scheme</th><th>L1 error (density)</th><th>Steps</th><th>Run time</th><th>Cells across shock</th><th>Cells across contact</th><th>Status</th></tr></thead>
+            <tbody id="results"></tbody>
+          </table>
+        </div>
+        <p class="hint">Cells across a discontinuity counts cells inside the 5–95% band of the jump (shock measured in p, contact in ρ), for cases with a left fan and a right shock. Run time is measured in this browser.</p>
+      </section>
+
+      <footer>
+        Calorically perfect gas, γ = 1.4, nondimensional units, transmissive boundaries on x ∈ [0, 1]. Fluxes: Rusanov, Roe with optional Harten fix, and HLLC with Einfeldt wave speeds. Reconstruction: MUSCL on primitive variables with minmod, van Leer or superbee limiters. This page is a line-by-line JavaScript port of the Python solver; on the Sod problem at N = 400 it reproduces the repository's L1 errors, step counts and discontinuity widths exactly. Method and validation: <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">README on GitHub</a>. Built by Badr Elsayed.
+      </footer>
+    </main>
+  </div>
+</div>
+
+<script>
+// Port of badrelsayedNYU/shock-tube-solver (src/shocktube/*) to JavaScript.
+// Same equations, same defaults: transmissive BCs, 2 ghost cells, MUSCL on primitives,
+// forward Euler + CFL 0.8 at first order, SSP-RK2 + CFL 0.5 at second order.
+const ST = (() => {
+  const NG = 2;
+
+  const CASES = {
+    sod:    { label: "Sod", WL: [1.0, 0.0, 1.0],    WR: [0.125, 0.0, 0.1], x0: 0.5, tEnd: 0.25 },
+    "123":  { label: "123 problem", WL: [1.0, -2.0, 0.4], WR: [1.0, 2.0, 0.4], x0: 0.5, tEnd: 0.15 },
+    blast:  { label: "Strong blast", WL: [1.0, 0.0, 1000.0], WR: [1.0, 0.0, 0.01], x0: 0.5, tEnd: 0.012 },
+    modsod: { label: "Modified Sod", WL: [1.0, 0.75, 1.0], WR: [0.125, 0.0, 0.1], x0: 0.3, tEnd: 0.2 },
+  };
+
+  // ---------- limiters (Toro §14.3.1) ----------
+  const LIMITERS = {
+    none: () => 0,
+    minmod: r => Math.max(0, Math.min(1, r)),
+    vanleer: r => (r + Math.abs(r)) / (1 + Math.abs(r)),
+    superbee: r => Math.max(0, Math.min(2 * r, 1), Math.min(r, 2)),
+  };
+
+  // ---------- fluxes: all take primitive face states, write into out[3] ----------
+  function physFlux(r, u, p, g, out) {
+    const E = p / (g - 1) + 0.5 * r * u * u;
+    out[0] = r * u; out[1] = r * u * u + p; out[2] = u * (E + p);
+  }
+  const fl = [0, 0, 0], fr = [0, 0, 0];
+
+  function rusanov(rL, uL, pL, rR, uR, pR, g, out) {
+    physFlux(rL, uL, pL, g, fl); physFlux(rR, uR, pR, g, fr);
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR);
+    const S = Math.max(Math.abs(uL) + aL, Math.abs(uR) + aR);
+    const EL = pL / (g - 1) + 0.5 * rL * uL * uL, ER = pR / (g - 1) + 0.5 * rR * uR * uR;
+    out[0] = 0.5 * (fl[0] + fr[0]) - 0.5 * S * (rR - rL);
+    out[1] = 0.5 * (fl[1] + fr[1]) - 0.5 * S * (rR * uR - rL * uL);
+    out[2] = 0.5 * (fl[2] + fr[2]) - 0.5 * S * (ER - EL);
+  }
+
+  function roeAvg(rL, uL, pL, rR, uR, pR, g) {
+    const wL = Math.sqrt(rL), wR = Math.sqrt(rR);
+    const HL = (pL / (g - 1) + 0.5 * rL * uL * uL + pL) / rL;
+    const HR = (pR / (g - 1) + 0.5 * rR * uR * uR + pR) / rR;
+    const u = (wL * uL + wR * uR) / (wL + wR);
+    const H = (wL * HL + wR * HR) / (wL + wR);
+    return [u, H, Math.sqrt((g - 1) * (H - 0.5 * u * u))];
+  }
+
+  function harten(lam, d) { const a = Math.abs(lam); return a < d ? (lam * lam + d * d) / (2 * d) : a; }
+
+  function makeRoe(entropyFix, deltaFactor) {
+    return function roe(rL, uL, pL, rR, uR, pR, g, out) {
+      const [u, H, a] = roeAvg(rL, uL, pL, rR, uR, pR, g);
+      physFlux(rL, uL, pL, g, fl); physFlux(rR, uR, pR, g, fr);
+      const EL = pL / (g - 1) + 0.5 * rL * uL * uL, ER = pR / (g - 1) + 0.5 * rR * uR * uR;
+      const du1 = rR - rL, du2 = rR * uR - rL * uL, du3 = ER - EL;
+      const a2 = (g - 1) / (a * a) * (du1 * (H - u * u) + u * du2 - du3);
+      const a1 = 1 / (2 * a) * (du1 * (u + a) - du2 - a * a2);
+      const a3 = du1 - (a1 + a2);
+      let l1 = Math.abs(u - a), l3 = Math.abs(u + a);
+      if (entropyFix) { const d = deltaFactor * a; l1 = harten(u - a, d); l3 = harten(u + a, d); }
+      const l2 = Math.abs(u);
+      out[0] = 0.5 * (fl[0] + fr[0]) - 0.5 * (l1 * a1 + l2 * a2 + l3 * a3);
+      out[1] = 0.5 * (fl[1] + fr[1]) - 0.5 * (l1 * a1 * (u - a) + l2 * a2 * u + l3 * a3 * (u + a));
+      out[2] = 0.5 * (fl[2] + fr[2]) - 0.5 * (l1 * a1 * (H - u * a) + l2 * a2 * 0.5 * u * u + l3 * a3 * (H + u * a));
+    };
+  }
+
+  function hllc(rL, uL, pL, rR, uR, pR, g, out) {
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR);
+    const [ur, , ar] = roeAvg(rL, uL, pL, rR, uR, pR, g);
+    const SL = Math.min(uL - aL, ur - ar), SR = Math.max(uR + aR, ur + ar);
+    physFlux(rL, uL, pL, g, fl); physFlux(rR, uR, pR, g, fr);
+    if (0 <= SL) { out[0] = fl[0]; out[1] = fl[1]; out[2] = fl[2]; return; }
+    const Ss = (pR - pL + rL * uL * (SL - uL) - rR * uR * (SR - uR)) / (rL * (SL - uL) - rR * (SR - uR));
+    let r, u, p, S, f;
+    if (Ss >= 0) { r = rL; u = uL; p = pL; S = SL; f = fl; }
+    else if (SR >= 0) { r = rR; u = uR; p = pR; S = SR; f = fr; }
+    else { out[0] = fr[0]; out[1] = fr[1]; out[2] = fr[2]; return; }
+    const E = p / (g - 1) + 0.5 * r * u * u;
+    const c = r * (S - u) / (S - Ss);
+    const us0 = c, us1 = c * Ss, us2 = c * (E / r + (Ss - u) * (Ss + p / (r * (S - u))));
+    out[0] = f[0] + S * (us0 - r); out[1] = f[1] + S * (us1 - r * u); out[2] = f[2] + S * (us2 - E);
+  }
+
+  function getFlux(name, opts) {
+    if (name === "rusanov") return rusanov;
+    if (name === "hllc") return hllc;
+    if (name === "roe") return makeRoe(opts.entropyFix !== false, opts.deltaFactor ?? 0.1);
+    throw new Error("unknown flux " + name);
+  }
+
+  // ---------- exact Riemann solver (Toro ch. 4) ----------
+  function presFn(p, rK, pK, aK, g) {
+    if (p > pK) {
+      const A = 2 / ((g + 1) * rK), B = (g - 1) / (g + 1) * pK, root = Math.sqrt(A / (p + B));
+      return [(p - pK) * root, root * (1 - 0.5 * (p - pK) / (p + B))];
+    }
+    const z = (g - 1) / (2 * g);
+    return [2 * aK / (g - 1) * (Math.pow(p / pK, z) - 1), 1 / (rK * aK) * Math.pow(p / pK, -(g + 1) / (2 * g))];
+  }
+
+  function starState(WL, WR, g) {
+    const [rL, uL, pL] = WL, [rR, uR, pR] = WR;
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR), du = uR - uL;
+    if (du >= 2 * (aL + aR) / (g - 1)) throw new Error("These states generate vacuum, which the exact solver does not support.");
+    const z = (g - 1) / (2 * g);
+    let p = Math.pow((aL + aR - 0.5 * (g - 1) * du) / (aL / Math.pow(pL, z) + aR / Math.pow(pR, z)), 1 / z);
+    const tol = 1e-8;
+    for (let k = 0; k < 100; k++) {
+      const [fL, dL] = presFn(p, rL, pL, aL, g), [fR, dR] = presFn(p, rR, pR, aR, g);
+      let pn = Math.max(p - (fL + fR + du) / (dL + dR), tol);
+      const conv = 2 * Math.abs(pn - p) / (pn + p) < tol;
+      p = pn;
+      if (conv) break;
+    }
+    const fL = presFn(p, rL, pL, aL, g)[0], fR = presFn(p, rR, pR, aR, g)[0];
+    return [p, 0.5 * (uL + uR) + 0.5 * (fR - fL)];
+  }
+
+  function sampleOne(xi, WL, WR, ps, us, g) {
+    const [rL, uL, pL] = WL, [rR, uR, pR] = WR;
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR);
+    const g1 = (g - 1) / (2 * g), g2 = (g + 1) / (2 * g), g5 = 2 / (g + 1), g6 = (g - 1) / (g + 1), g7 = 0.5 * (g - 1);
+    if (xi <= us) {
+      if (ps > pL) {
+        const S = uL - aL * Math.sqrt(g2 * ps / pL + g1);
+        return xi <= S ? [rL, uL, pL] : [rL * (ps / pL + g6) / (g6 * ps / pL + 1), us, ps];
+      }
+      const SH = uL - aL, ST_ = us - aL * Math.pow(ps / pL, g1);
+      if (xi <= SH) return [rL, uL, pL];
+      if (xi > ST_) return [rL * Math.pow(ps / pL, 1 / g), us, ps];
+      const c = g5 * (aL + g7 * (uL - xi));
+      return [rL * Math.pow(c / aL, 2 / (g - 1)), g5 * (aL + g7 * uL + xi), pL * Math.pow(c / aL, 2 * g / (g - 1))];
+    }
+    if (ps > pR) {
+      const S = uR + aR * Math.sqrt(g2 * ps / pR + g1);
+      return xi >= S ? [rR, uR, pR] : [rR * (ps / pR + g6) / (g6 * ps / pR + 1), us, ps];
+    }
+    const SH = uR + aR, ST_ = us + aR * Math.pow(ps / pR, g1);
+    if (xi >= SH) return [rR, uR, pR];
+    if (xi < ST_) return [rR * Math.pow(ps / pR, 1 / g), us, ps];
+    const c = g5 * (aR - g7 * (uR - xi));
+    return [rR * Math.pow(c / aR, 2 / (g - 1)), g5 * (-aR + g7 * uR + xi), pR * Math.pow(c / aR, 2 * g / (g - 1))];
+  }
+
+  function exact(xs, t, cs, g = 1.4) {
+    const n = xs.length, r = new Float64Array(n), u = new Float64Array(n), p = new Float64Array(n);
+    if (t <= 0) {
+      for (let i = 0; i < n; i++) { const W = xs[i] <= cs.x0 ? cs.WL : cs.WR; r[i] = W[0]; u[i] = W[1]; p[i] = W[2]; }
+      return { rho: r, u, p };
+    }
+    const [ps, us] = starState(cs.WL, cs.WR, g);
+    for (let i = 0; i < n; i++) { const W = sampleOne((xs[i] - cs.x0) / t, cs.WL, cs.WR, ps, us, g); r[i] = W[0]; u[i] = W[1]; p[i] = W[2]; }
+    return { rho: r, u, p };
+  }
+
+  // ---------- finite-volume solver ----------
+  function solve(cs, o = {}) {
+    const g = 1.4, N = o.N ?? 400, lim = o.limiter ?? "none";
+    const second = lim !== "none";
+    const cfl = o.cfl ?? (second ? 0.5 : 0.8);
+    const stages = second ? [[0, 1], [0.5, 0.5]] : [[0, 1]];
+    const flux = getFlux(o.flux ?? "rusanov", o), phi = LIMITERS[lim];
+    const tEnd = o.tEnd ?? cs.tEnd, nFrames = o.frames ?? 0;
+    const dx = 1 / N, M = N + 2 * NG, nF = N + 1;
+    const x = new Float64Array(N);
+    for (let i = 0; i < N; i++) x[i] = (i + 0.5) * dx;
+
+    // conserved state U (3 rows), stage buffer, work arrays
+    const U = [new Float64Array(N), new Float64Array(N), new Float64Array(N)];
+    for (let i = 0; i < N; i++) {
+      const W = x[i] < cs.x0 ? cs.WL : cs.WR;
+      U[0][i] = W[0]; U[1][i] = W[0] * W[1]; U[2][i] = W[2] / (g - 1) + 0.5 * W[0] * W[1] * W[1];
+    }
+    const Us = [new Float64Array(N), new Float64Array(N), new Float64Array(N)];
+    const Wg = [new Float64Array(M), new Float64Array(M), new Float64Array(M)];
+    const slope = [new Float64Array(M), new Float64Array(M), new Float64Array(M)];
+    const F = [new Float64Array(nF), new Float64Array(nF), new Float64Array(nF)];
+    const out = [0, 0, 0];
+    let nFallback = 0;
+
+    const prim = (U_) => {
+      const W = [new Float64Array(N), new Float64Array(N), new Float64Array(N)];
+      for (let i = 0; i < N; i++) {
+        const r = U_[0][i], u = U_[1][i] / r;
+        W[0][i] = r; W[1][i] = u; W[2][i] = (g - 1) * (U_[2][i] - 0.5 * r * u * u);
+      }
+      return W;
+    };
+
+    function operator(Uin, L) {
+      for (let j = 0; j < M; j++) {
+        const i = Math.min(Math.max(j - NG, 0), N - 1);
+        const r = Uin[0][i], u = Uin[1][i] / r;
+        Wg[0][j] = r; Wg[1][j] = u; Wg[2][j] = (g - 1) * (Uin[2][i] - 0.5 * r * u * u);
+      }
+      for (let j = 1; j < M - 1; j++) {
+        for (let v = 0; v < 3; v++) {
+          const dm = Wg[v][j] - Wg[v][j - 1], dp = Wg[v][j + 1] - Wg[v][j];
+          const r = dm !== 0 ? dp / dm : 0;
+          slope[v][j] = phi(r) * dm;
+        }
+        const rm = Wg[0][j] - 0.5 * slope[0][j], rp = Wg[0][j] + 0.5 * slope[0][j];
+        const pm = Wg[2][j] - 0.5 * slope[2][j], pp = Wg[2][j] + 0.5 * slope[2][j];
+        if (second && (rm <= 0 || rp <= 0 || pm <= 0 || pp <= 0)) { slope[0][j] = slope[1][j] = slope[2][j] = 0; nFallback++; }
+      }
+      for (let k = 0; k < nF; k++) {
+        const a = k + 1, b = k + 2; // face between padded cells a and b
+        flux(Wg[0][a] + 0.5 * slope[0][a], Wg[1][a] + 0.5 * slope[1][a], Wg[2][a] + 0.5 * slope[2][a],
+             Wg[0][b] - 0.5 * slope[0][b], Wg[1][b] - 0.5 * slope[1][b], Wg[2][b] - 0.5 * slope[2][b], g, out);
+        F[0][k] = out[0]; F[1][k] = out[1]; F[2][k] = out[2];
+      }
+      for (let v = 0; v < 3; v++) for (let i = 0; i < N; i++) L[v][i] = -(F[v][i + 1] - F[v][i]) / dx;
+    }
+
+    function badCell(U_) {
+      for (let i = 0; i < N; i++) {
+        const r = U_[0][i], u = U_[1][i] / r, p = (g - 1) * (U_[2][i] - 0.5 * r * u * u);
+        if (!(r > 0 && p > 0)) return { cell: i, x: x[i], rho: r, p };
+      }
+      return null;
+    }
+
+    const L = [new Float64Array(N), new Float64Array(N), new Float64Array(N)];
+    const frames = [];
+    const snap = (t) => { const W = prim(U); frames.push({ t, rho: W[0], u: W[1], p: W[2] }); };
+    let nextFrame = 0;
+    const frameTime = k => tEnd * k / nFrames;
+    if (nFrames) { snap(0); nextFrame = 1; }
+
+    let t = 0, steps = 0, failure = null;
+    const t0 = (typeof performance !== "undefined" ? performance : Date).now();
+    outer:
+    while (t < tEnd) {
+      let smax = 0;
+      for (let i = 0; i < N; i++) {
+        const r = U[0][i], u = U[1][i] / r, p = (g - 1) * (U[2][i] - 0.5 * r * u * u);
+        smax = Math.max(smax, Math.abs(u) + Math.sqrt(g * p / r));
+      }
+      const dt = Math.min(cfl * dx / smax, tEnd - t);
+      const tNew = tEnd - t <= dt ? tEnd : t + dt;
+      for (let v = 0; v < 3; v++) Us[v].set(U[v]);
+      for (let s = 0; s < stages.length; s++) {
+        const [a, b] = stages[s];
+        operator(Us, L);
+        for (let v = 0; v < 3; v++) for (let i = 0; i < N; i++) Us[v][i] = a * U[v][i] + b * (Us[v][i] + dt * L[v][i]);
+        const bad = badCell(Us);
+        if (bad) { failure = { ...bad, t: tNew, stage: s + 1, step: steps + 1 }; break outer; }
+      }
+      for (let v = 0; v < 3; v++) U[v].set(Us[v]);
+      t = tNew; steps++;
+      while (nFrames && nextFrame <= nFrames && t >= frameTime(nextFrame) - 1e-12) { snap(t); nextFrame++; }
+    }
+    const ms = (typeof performance !== "undefined" ? performance : Date).now() - t0;
+    const W = prim(U);
+    return { x, dx, N, t, steps, ms, rho: W[0], u: W[1], p: W[2], frames, failure, nFallback };
+  }
+
+  function l1(res, cs, field = "rho") {
+    const ex = exact(res.x, res.t, cs);
+    let s = 0;
+    for (let i = 0; i < res.N; i++) s += Math.abs(res[field][i] - ex[field][i]);
+    return s * res.dx;
+  }
+
+  // Cells inside the 5–95% band of the shock (in p) and contact (in rho), for left-fan / right-shock cases.
+  function resolution(res, cs) {
+    const g = 1.4;
+    let ps, us;
+    try { [ps, us] = starState(cs.WL, cs.WR, g); } catch (e) { return null; }
+    const [rL, uL, pL] = cs.WL, [rR, uR, pR] = cs.WR;
+    if (!(ps <= pL && ps > pR)) return null;
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR), t = res.t;
+    const tail = cs.x0 + (us - aL * Math.pow(ps / pL, (g - 1) / (2 * g))) * t;
+    const contact = cs.x0 + us * t;
+    const shock = cs.x0 + (uR + aR * Math.sqrt((g + 1) / (2 * g) * ps / pR + (g - 1) / (2 * g))) * t;
+    const mid = 0.5 * (contact + shock);
+    const ex = exact([contact - 1e-9, contact + 1e-9], t, cs);
+    const count = (q, lo, hi, qa, qb) => {
+      let n = 0;
+      for (let i = 0; i < res.N; i++) {
+        if (res.x[i] > lo && res.x[i] < hi) { const s = (q[i] - qa) / (qb - qa); if (s > 0.05 && s < 0.95) n++; }
+      }
+      return n;
+    };
+    return { shock: count(res.p, mid, 1, ps, pR), contact: count(res.rho, tail, mid, ex.rho[0], ex.rho[1]) };
+  }
+
+  return { CASES, LIMITERS, solve, exact, starState, l1, resolution };
+})();
+
+
+</script>
+<script>
+(() => {
+  const FLUX_NAMES = { hllc: "HLLC", roe: "Roe", rusanov: "Rusanov" };
+  const LIM_NAMES = { none: "First order", minmod: "minmod", vanleer: "van Leer", superbee: "superbee" };
+  const GRIDS = [50, 100, 200, 400, 800];
+  const NF = 80;
+
+  const PRESETS = [
+    { id: "sod", label: "Sod", case: "sod", A: ["hllc", "vanleer"], B: ["rusanov", "none"], compare: true, N: 100, fix: true,
+      title: "Sod shock tube",
+      text: "Every scheme puts the fan, contact and shock in the right place. The difference is sharpness. First-order Rusanov smears the contact over a large part of the tube; HLLC with van Leer holds it to a few cells. Try switching only the flux, then only the limiter: the limiter changes the error far more." },
+    { id: "blast", label: "Strong blast", case: "blast", A: ["hllc", "vanleer"], B: ["hllc", "none"], compare: true, N: 100, fix: true,
+      title: "Strong blast",
+      text: "A pressure ratio of 100,000 drives a shock with a dense shell only about five cells wide at N = 100. Second order reaches a shell density near 5.2, first order about 4.3. Every flux and limiter survives this one." },
+    { id: "123", label: "123 problem", case: "123", A: ["hllc", "vanleer"], B: ["rusanov", "none"], compare: true, N: 200, fix: true,
+      title: "123 problem: two strong rarefactions",
+      text: "The gas pulls apart and the center approaches vacuum. Density, velocity and pressure come out well, but internal energy e = p/((γ−1)ρ) is a ratio of two tiny numbers, so every scheme overshoots it in the middle. Second order roughly halves that error." },
+    { id: "modsod", label: "Modified Sod", case: "modsod", A: ["hllc", "none"], B: ["roe", "none"], compare: true, N: 100, fix: true,
+      title: "Modified Sod: a transonic rarefaction",
+      text: "The left fan straddles a sonic point, where one acoustic eigenvalue passes through zero inside the fan. Watch the density near x = 0.3. Then open the expansion-shock experiment to see what Roe does there without an entropy fix." },
+    { id: "roeExp", label: "Break Roe: expansion shock", case: "modsod", A: ["roe", "none"], B: ["hllc", "none"], compare: true, N: 100, fix: false, warn: true,
+      title: "Roe failure 1: an expansion shock",
+      text: "At the sonic point Roe's dissipation |λ₁| vanishes, so it keeps an entropy-violating jump near x = 0.3, about five times the exact drop. Turn on the Harten fix: δ = 0.1 ã roughly halves the jump and δ = 0.2–0.3 ã removes it. HLLC needs no tuning." },
+    { id: "roeVac", label: "Break Roe: near vacuum", case: "123", A: ["roe", "none"], B: ["hllc", "none"], compare: true, N: 400, fix: true, warn: true,
+      title: "Roe failure 2: negative pressure near vacuum",
+      text: "Roe fails on its very first time step: the cell next to the diaphragm reaches p ≈ −0.43 while its density is still positive. The entropy fix does not help, because this is a limit of linearized Riemann solvers, not an entropy problem. HLLC and Rusanov bound the true wave speeds and finish the run." },
+    { id: "custom", label: "Custom", case: null, title: "Your own Riemann problem",
+      text: "Set the left and right states and the diaphragm position. Any problem without vacuum has an exact solution to compare against." },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const state = { preset: "sod", A: ["hllc", "vanleer"], B: ["rusanov", "none"], compare: true, N: 100, fix: true, delta: 0.1,
+    custom: { WL: [1, 0, 1], WR: [0.125, 0, 0.1], x0: 0.5, tEnd: 0.25 }, frame: NF, playing: false };
+  let run = null; // last results
+
+  // ---------- build controls ----------
+  const presetBox = $("presets");
+  for (const p of PRESETS) {
+    const b = document.createElement("button");
+    b.className = "chip" + (p.warn ? " warn" : ""); b.type = "button"; b.textContent = p.label; b.dataset.id = p.id;
+    b.addEventListener("click", () => applyPreset(p.id));
+    presetBox.appendChild(b);
+  }
+  for (const id of ["fluxA", "fluxB"]) for (const [k, v] of Object.entries(FLUX_NAMES)) $(id).add(new Option(v, k));
+  for (const id of ["limA", "limB"]) for (const [k, v] of Object.entries(LIM_NAMES)) $(id).add(new Option(v, k));
+  const seg = $("gridSeg");
+  for (const n of GRIDS) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.dataset.n = n;
+    b.addEventListener("click", () => { state.N = n; sync(); schedule(); });
+    seg.appendChild(b);
+  }
+
+  function applyPreset(id) {
+    const p = PRESETS.find(q => q.id === id);
+    state.preset = id;
+    if (p.case) {
+      state.A = [...p.A]; state.B = [...p.B]; state.compare = p.compare; state.N = p.N; state.fix = p.fix; state.delta = 0.1;
+      const c = ST.CASES[p.case];
+      state.custom = { WL: [...c.WL], WR: [...c.WR], x0: c.x0, tEnd: c.tEnd };
+    }
+    stop(); state.frame = NF; sync(); schedule(0);
+  }
+
+  function sync() {
+    for (const b of presetBox.children) b.setAttribute("aria-pressed", b.dataset.id === state.preset);
+    for (const b of seg.children) b.setAttribute("aria-pressed", +b.dataset.n === state.N);
+    $("fluxA").value = state.A[0]; $("limA").value = state.A[1];
+    $("fluxB").value = state.B[0]; $("limB").value = state.B[1];
+    $("compare").checked = state.compare;
+    $("rowB").style.opacity = state.compare ? 1 : 0.45;
+    $("fluxB").disabled = $("limB").disabled = !state.compare;
+    $("fix").checked = state.fix; $("delta").value = String(state.delta); $("delta").disabled = !state.fix;
+    const usesRoe = state.A[0] === "roe" || (state.compare && state.B[0] === "roe");
+    $("roeBox").hidden = !usesRoe;
+    const isCustom = state.preset === "custom";
+    $("customBox").hidden = !isCustom;
+    const c = state.custom;
+    [["rL", c.WL[0]], ["uL", c.WL[1]], ["pL", c.WL[2]], ["rR", c.WR[0]], ["uR", c.WR[1]], ["pR", c.WR[2]], ["x0", c.x0], ["tEnd", c.tEnd]]
+      .forEach(([id, v]) => { if (document.activeElement !== $(id)) $(id).value = v; });
+    const p = PRESETS.find(q => q.id === state.preset);
+    $("note").className = "note" + (p.warn ? " warn" : "");
+    $("note").querySelector("h2").textContent = p.title;
+    $("note").querySelector("p").textContent = p.text;
+  }
+
+  $("fluxA").addEventListener("change", e => { state.A[0] = e.target.value; sync(); schedule(); });
+  $("limA").addEventListener("change", e => { state.A[1] = e.target.value; schedule(); });
+  $("fluxB").addEventListener("change", e => { state.B[0] = e.target.value; sync(); schedule(); });
+  $("limB").addEventListener("change", e => { state.B[1] = e.target.value; schedule(); });
+  $("compare").addEventListener("change", e => { state.compare = e.target.checked; sync(); schedule(); });
+  $("fix").addEventListener("change", e => { state.fix = e.target.checked; sync(); schedule(); });
+  $("delta").addEventListener("change", e => { state.delta = +e.target.value; schedule(); });
+  for (const id of ["rL", "uL", "pL", "rR", "uR", "pR", "x0", "tEnd"]) $(id).addEventListener("input", () => {
+    const v = id => parseFloat($(id).value);
+    state.custom = { WL: [v("rL"), v("uL"), v("pL")], WR: [v("rR"), v("uR"), v("pR")], x0: v("x0"), tEnd: v("tEnd") };
+    schedule(250);
+  });
+
+  // ---------- run ----------
+  let timer = null;
+  function schedule(ms = 60) { clearTimeout(timer); timer = setTimeout(compute, ms); }
+
+  function validCustom(c) {
+    const all = [...c.WL, ...c.WR, c.x0, c.tEnd];
+    if (all.some(v => !Number.isFinite(v))) return "Fill in every value.";
+    if (c.WL[0] <= 0 || c.WR[0] <= 0) return "Density must be positive on both sides.";
+    if (c.WL[2] <= 0 || c.WR[2] <= 0) return "Pressure must be positive on both sides.";
+    if (c.x0 <= 0 || c.x0 >= 1) return "Put the diaphragm between 0 and 1.";
+    if (c.tEnd <= 0) return "End time must be positive.";
+    if (c.tEnd > 2) return "Keep the end time at 2 or less so the run stays quick.";
+    return null;
+  }
+
+  function compute() {
+    const cs = state.custom;
+    const err = state.preset === "custom" ? validCustom(cs) : null;
+    $("customErr").hidden = !err; $("customErr").textContent = err || "";
+    if (err) return;
+    const opts = s => ({ N: state.N, flux: s[0], limiter: s[1], entropyFix: state.fix, deltaFactor: state.delta, frames: NF });
+    const A = ST.solve(cs, opts(state.A));
+    const B = state.compare ? ST.solve(cs, opts(state.B)) : null;
+    let exactFrames = null, exactErr = null;
+    const xs = new Float64Array(600); for (let i = 0; i < 600; i++) xs[i] = (i + 0.5) / 600;
+    try {
+      exactFrames = [];
+      for (let k = 0; k <= NF; k++) {
+        const t = cs.tEnd * k / NF, ex = ST.exact(xs, t, cs);
+        exactFrames.push({ t, rho: ex.rho, u: ex.u, p: ex.p, e: energy(ex.rho, ex.p) });
+      }
+    } catch (e) { exactFrames = null; exactErr = e.message; }
+    for (const R of [A, B]) if (R) R.frames.forEach(f => f.e = energy(f.rho, f.p));
+    run = { cs, A, B, xs, exactFrames, exactErr, schemes: { A: [...state.A], B: [...state.B] }, ranges: ranges(A, B, exactFrames) };
+    renderTable(); renderBanner(); renderLegend(); draw();
+  }
+
+  function energy(r, p) { const e = new Float64Array(r.length); for (let i = 0; i < r.length; i++) e[i] = p[i] / (0.4 * r[i]); return e; }
+
+  function ranges(A, B, ex) {
+    const out = {};
+    for (const key of ["rho", "u", "p", "e"]) {
+      let lo = Infinity, hi = -Infinity;
+      const scan = arr => { for (const v of arr) if (Number.isFinite(v)) { if (v < lo) lo = v; if (v > hi) hi = v; } };
+      if (ex) ex.forEach(f => scan(f[key]));
+      for (const R of [A, B]) if (R) R.frames.forEach(f => scan(f[key]));
+      if (!(hi > lo)) { hi = lo + 1; lo -= 1; }
+      const pad = (hi - lo) * 0.08;
+      out[key] = [lo - pad, hi + pad];
+    }
+    return out;
+  }
+
+  const name = s => s[1] === "none" ? `${FLUX_NAMES[s[0]]}, first order` : `${FLUX_NAMES[s[0]]} + ${LIM_NAMES[s[1]]}`;
+  const roeTag = s => s[0] === "roe" ? (state.fix ? ` (fix δ=${state.delta})` : " (no fix)") : "";
+
+  function renderTable() {
+    const rows = [];
+    for (const [key, R] of [["A", run.A], ["B", run.B]]) {
+      if (!R) continue;
+      const s = run.schemes[key];
+      const ok = !R.failure;
+      const err = ok && run.exactFrames ? ST.l1(R, run.cs).toExponential(3) : "—";
+      const res = ok && run.exactFrames ? ST.resolution(R, run.cs) : null;
+      rows.push(`<tr><td><span class="sw${key === "B" ? " b" : ""}" style="display:inline-block;vertical-align:-1px;margin-right:6px"></span>${name(s)}${roeTag(s)}</td>
+        <td class="num">${err}</td><td class="num">${R.steps}${ok ? "" : "+1"}</td><td class="num">${R.ms < 1 ? "<1" : R.ms.toFixed(0)} ms</td>
+        <td class="num">${res ? res.shock : "—"}</td><td class="num">${res ? res.contact : "—"}</td>
+        <td>${ok ? '<span class="pill ok">Completed</span>' : `<span class="pill fail">Failed, step ${R.failure.step}</span>`}</td></tr>`);
+    }
+    $("results").innerHTML = rows.join("");
+  }
+
+  function renderBanner() {
+    const msgs = [];
+    for (const [key, R] of [["A", run.A], ["B", run.B]]) {
+      if (R && R.failure) {
+        const f = R.failure;
+        msgs.push(`<strong>${name(run.schemes[key])} stopped</strong> at step ${f.step} (t = ${f.t.toPrecision(3)}): cell ${f.cell} at <code>x = ${f.x.toFixed(4)}</code> reached <code>ρ = ${fmt(f.rho)}</code>, <code>p = ${fmt(f.p)}</code>. The plots show its last valid state.`);
+      }
+    }
+    if (run.exactErr) msgs.push(run.exactErr + " The numerical schemes still run, but there is no exact curve or error to show.");
+    $("banner").hidden = !msgs.length; $("banner").innerHTML = msgs.join("<br>");
+  }
+  const fmt = v => Math.abs(v) >= 1e-3 && Math.abs(v) < 1e4 ? v.toFixed(3) : v.toExponential(2);
+
+  function renderLegend() {
+    const parts = [];
+    if (run.exactFrames) parts.push(`<span><i class="ln"></i>Exact solution</span>`);
+    parts.push(`<span><i class="sw"></i>${name(run.schemes.A)}${roeTag(run.schemes.A)}</span>`);
+    if (run.B) parts.push(`<span><i class="sw b"></i>${name(run.schemes.B)}${roeTag(run.schemes.B)}</span>`);
+    parts.push(`<span style="color:var(--muted)">N = ${run.A.N}</span>`);
+    $("legend").innerHTML = parts.join("");
+  }
+
+  // ---------- drawing ----------
+  const css = () => { const s = getComputedStyle(document.documentElement); const g = k => s.getPropertyValue(k).trim();
+    return { ink: g("--ink"), muted: g("--muted"), grid: g("--grid"), rule: g("--rule"), a: g("--a"), b: g("--b"), surface: g("--surface"), bg: g("--bg") }; };
+
+  function setup(cv) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+
+  function ticks(lo, hi, n = 4) {
+    const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-12; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+    return out;
+  }
+  const tickLabel = v => { const a = Math.abs(v); return a === 0 ? "0" : a >= 1000 ? v.toFixed(0) : a >= 10 ? +v.toFixed(1) + "" : a >= 0.01 ? +v.toFixed(3) + "" : v.toExponential(0); };
+
+  const PLOTS = [["pRho", "rho", "Density ρ"], ["pU", "u", "Velocity u"], ["pP", "p", "Pressure p"], ["pE", "e", "Internal energy e"]];
+
+  function frameOf(R, k) { return R.frames[Math.min(k, R.frames.length - 1)]; }
+
+  function drawPlot(id, key, title, k, C) {
+    const { ctx, w, h } = setup($(id));
+    const m = { l: 50, r: 12, t: 26, b: 24 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    const [lo, hi] = run.ranges[key];
+    const X = x => m.l + x * pw, Y = v => m.t + (1 - (v - lo) / (hi - lo)) * ph;
+    ctx.font = "500 11px " + getComputedStyle(document.body).getPropertyValue("--font-mono");
+    ctx.lineWidth = 1;
+    // grid + ticks
+    ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (const v of ticks(lo, hi)) {
+      const y = Math.round(Y(v)) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke();
+      ctx.fillText(tickLabel(v), m.l - 6, y);
+    }
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const v of [0, 0.25, 0.5, 0.75, 1]) {
+      const x = Math.round(X(v)) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph); ctx.stroke();
+      ctx.fillText(v === 0 ? "0" : v === 1 ? "1" : String(v), x, m.t + ph + 6);
+    }
+    ctx.strokeStyle = C.rule; ctx.strokeRect(m.l + 0.5, m.t + 0.5, pw - 1, ph - 1);
+    // title
+    ctx.font = "600 13px " + getComputedStyle(document.body).getPropertyValue("--font-display");
+    ctx.fillStyle = C.ink; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillText(title, m.l, 17);
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, pw, ph); ctx.clip();
+    // exact
+    if (run.exactFrames) {
+      const f = run.exactFrames[k];
+      ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.beginPath();
+      for (let i = 0; i < run.xs.length; i++) { const x = X(run.xs[i]), y = Y(f[key][i]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+    const N = run.A.N, rad = N <= 100 ? 2.4 : N <= 200 ? 1.9 : N <= 400 ? 1.5 : 1.15;
+    // scheme B: rings
+    if (run.B) {
+      const f = frameOf(run.B, k); ctx.strokeStyle = C.b; ctx.lineWidth = N <= 200 ? 1.3 : 1;
+      for (let i = 0; i < N; i++) { const v = f[key][i]; if (!Number.isFinite(v)) continue; ctx.beginPath(); ctx.arc(X(run.B.x[i]), Y(v), rad + 0.6, 0, 6.2832); ctx.stroke(); }
+    }
+    // scheme A: dots
+    const fa = frameOf(run.A, k); ctx.fillStyle = C.a;
+    for (let i = 0; i < N; i++) { const v = fa[key][i]; if (!Number.isFinite(v)) continue; ctx.beginPath(); ctx.arc(X(run.A.x[i]), Y(v), rad, 0, 6.2832); ctx.fill(); }
+    ctx.restore();
+  }
+
+  function mix(c1, c2, t) {
+    const p = c => { const d = document.createElement("canvas").getContext("2d"); d.fillStyle = c; const hx = d.fillStyle; return [1, 3, 5].map(i => parseInt(hx.slice(i, i + 2), 16)); };
+    mix.cache = mix.cache || {}; const key = c1 + c2;
+    const [a, b] = mix.cache[key] || (mix.cache[key] = [p(c1), p(c2)]);
+    return `rgb(${a.map((v, i) => Math.round(v + (b[i] - v) * t)).join(",")})`;
+  }
+
+  function drawTube(k, C) {
+    const { ctx, w, h } = setup($("tube"));
+    const f = frameOf(run.A, k), [lo, hi] = run.ranges.rho, N = run.A.N;
+    const pad = 1, H = h - 2 * pad, r = 6;
+    ctx.save(); ctx.beginPath(); ctx.roundRect ? ctx.roundRect(pad, pad, w - 2 * pad, H, r) : ctx.rect(pad, pad, w - 2 * pad, H); ctx.clip();
+    for (let i = 0; i < N; i++) {
+      const t = Math.max(0, Math.min(1, (f.rho[i] - lo) / (hi - lo)));
+      ctx.fillStyle = mix(C.surface, C.ink, 0.06 + 0.9 * t);
+      const x0 = pad + (i / N) * (w - 2 * pad), x1 = pad + ((i + 1) / N) * (w - 2 * pad);
+      ctx.fillRect(Math.floor(x0), pad, Math.ceil(x1 - x0) + 1, H);
+    }
+    ctx.restore();
+    ctx.strokeStyle = C.rule; ctx.lineWidth = 1; ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(pad + 0.5, pad + 0.5, w - 2 * pad - 1, H - 1, r) : ctx.rect(pad + 0.5, pad + 0.5, w - 2 * pad - 1, H - 1); ctx.stroke();
+    const xd = pad + run.cs.x0 * (w - 2 * pad);
+    ctx.setLineDash([3, 3]); ctx.strokeStyle = C.a; ctx.beginPath(); ctx.moveTo(xd + 0.5, pad); ctx.lineTo(xd + 0.5, pad + H); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  function draw() {
+    if (!run) return;
+    const C = css(), k = state.frame;
+    PLOTS.forEach(([id, key, title]) => drawPlot(id, key, title, k, C));
+    drawTube(k, C);
+    const tA = frameOf(run.A, k).t, tEnd = run.cs.tEnd;
+    const shown = run.exactFrames ? run.exactFrames[k].t : tA;
+    $("tread").textContent = `t = ${shown.toFixed(4)} / ${tEnd.toFixed(4)}`;
+    $("scrub").value = k;
+  }
+
+  // ---------- playback ----------
+  let raf = null, last = 0;
+  function stop() { state.playing = false; cancelAnimationFrame(raf); $("play").textContent = "Play"; }
+  function tick(ts) {
+    if (!state.playing) return;
+    if (ts - last > 36) { last = ts; state.frame++; if (state.frame > NF) { state.frame = NF; stop(); draw(); return; } draw(); }
+    raf = requestAnimationFrame(tick);
+  }
+  $("play").addEventListener("click", () => {
+    if (state.playing) { stop(); return; }
+    if (state.frame >= NF) state.frame = 0;
+    state.playing = true; $("play").textContent = "Pause"; last = 0; raf = requestAnimationFrame(tick);
+  });
+  $("scrub").addEventListener("input", e => { stop(); state.frame = +e.target.value; draw(); });
+
+  // ---------- redraw on resize / theme change ----------
+  let rz = null;
+  new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(draw); }).observe(document.querySelector(".main"));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { mix.cache = {}; draw(); });
+  new MutationObserver(() => { mix.cache = {}; draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (document.fonts) document.fonts.ready.then(draw);
+
+  applyPreset("sod");
+})();
+</script>

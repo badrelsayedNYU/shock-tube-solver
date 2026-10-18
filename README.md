@@ -1,5 +1,7 @@
 # 1D Euler Shock Tube Solver
 
+**[▶ Try it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/)** — interactive version that runs the same model live.
+
 A finite-volume, shock-capturing solver for the one-dimensional compressible Euler equations, validated against an exact Riemann solver. It compares three numerical fluxes (Rusanov, Roe, HLLC) and four reconstructions (first order, minmod, van Leer, superbee) for accuracy, convergence, cost, and how sharply each one resolves shocks, contact discontinuities and expansion fans. It also documents two well-known ways the Roe solver fails.
 
 *Badr Elsayed. Python 3.11+ / NumPy, fully vectorized; 57 automated tests.*
