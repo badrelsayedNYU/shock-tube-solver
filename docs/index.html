@@ -45,6 +45,8 @@ h1 { font-family: var(--font-display); font-weight: 700; font-size: 2.1rem; lett
 .sub { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
 .src { font-family: var(--font-mono); font-size: 0.78rem; color: var(--muted); }
 .src a { color: var(--a); }
+.src { text-align: right; line-height: 1.7; }
+@media (max-width: 560px) { .src { text-align: left; } }
 .layout { display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 18px; align-items: start; }
 @media (max-width: 880px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 .panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px; min-width: 0; }
@@ -78,7 +80,7 @@ input[type="number"] { font-family: var(--font-mono); font-size: 0.8rem; }
 .hint { color: var(--muted); font-size: 0.82rem; margin: 6px 0 0; }
 :focus-visible { outline: 2px solid var(--a); outline-offset: 2px; }
 
-.main { display: grid; gap: 14px; min-width: 0; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; min-width: 0; }
 .note { border-left: 3px solid var(--ink); padding: 2px 0 2px 12px; max-width: 75ch; }
 .note h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; margin: 0 0 2px; }
 .note p { margin: 0; color: var(--muted); }
@@ -144,7 +146,7 @@ td.hl { font-weight: 600; }
       <h1>Shock Tube Lab</h1>
       <p class="sub" id="subline">A finite-volume solver for the 1D Euler equations running in your browser, plotted against the exact Riemann solution. Pick an experiment, change the scheme, and watch the shock, contact and expansion fan develop.</p>
     </div>
-    <div class="src">port of <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">badrelsayedNYU/shock-tube-solver</a></div>
+    <div class="src"><a href="studies.html">1D numerical studies →</a><br>port of <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">badrelsayedNYU/shock-tube-solver</a></div>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="Solver">
