@@ -1,4 +1,4 @@
-# 1D Euler Shock Tube Solver
+# Euler Solver: Shock Tube & 2D Blunt Body
 
 **[▶ Try it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/)** — interactive version that runs the same models live: the 1D shock tube and the [2D blunt body](https://badrelsayednyu.github.io/shock-tube-solver/#blunt-body).
 
