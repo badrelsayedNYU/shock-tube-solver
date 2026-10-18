@@ -1,6 +1,6 @@
 # 1D Euler Shock Tube Solver
 
-**[▶ Try it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/)** — interactive version that runs the same model live.
+**[▶ Try it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/)** — interactive version that runs the same models live: the 1D shock tube and the [2D blunt body](https://badrelsayednyu.github.io/shock-tube-solver/#blunt-body).
 
 **[1D numerical studies](https://badrelsayednyu.github.io/shock-tube-solver/studies.html)** runs grid convergence, all 12 flux/limiter combinations, and mass, momentum and energy budgets with CSV export. Conservation uses time-integrated boundary fluxes with the same stage weights as the solver; failed runs are reported without final-time error metrics. The studies reuse the lab solver, extracted by `python scripts/build_studies_core.py`, with 15 additional browser-model tests (`node --test tests/test_browser_studies.cjs`).
 
@@ -174,6 +174,8 @@ Without the fix, Roe produces a jump about 5 times larger than the exact change 
 The same building blocks (MUSCL reconstruction, approximate Riemann fluxes, SSP-RK2) are extended to two dimensions in `src/shocktube/blunt2d.py` to solve the **blunt-body problem**: a detached bow shock stands ahead of a circular cylinder, with a subsonic pocket at the nose and supersonic flow around the shoulders. This is the flow in my research on extending a strongly implicit method to supersonic blunt bodies, so this solver also serves as an independent reference for it.
 
 ![Mach number around a cylinder at M = 4, with Billig's shock shape](figures/blunt_mach_M4.png)
+
+**[▶ Run it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/#blunt-body):** pick a Mach number, flux and grid, watch the bow shock form, and compare the result with Billig and the pitot formula. The carbuncle case below is one click.
 
 **Method.** Cell-centred finite volume on a body-fitted polar grid over the windward half of the cylinder (radial cells clustered at the wall), with face vectors from node differences so uniform flow is preserved to round-off. Face states come from van Leer–limited MUSCL reconstruction in each grid direction, rotated into the face-normal frame for the flux. Boundaries: slip wall, free stream on the outer arc, supersonic outflow on the plane x = 0. A first-order phase sets up the shock, then the second-order scheme is marched to steady state with local time steps.
 

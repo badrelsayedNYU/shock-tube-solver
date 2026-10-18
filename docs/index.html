@@ -111,18 +111,48 @@ td.num { font-family: var(--font-mono); font-size: 0.82rem; font-variant-numeric
 footer { color: var(--muted); font-size: 0.82rem; max-width: 80ch; }
 footer a { color: var(--a); }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+
+/* tabs between the 1D lab and the 2D blunt-body lab */
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--rule); }
+.tabs button { font: 600 0.95rem var(--font-display); letter-spacing: 0.03em; background: none; border: 0; border-bottom: 3px solid transparent; color: var(--muted); padding: 8px 16px 9px; cursor: pointer; margin-bottom: -1px; }
+.tabs button:hover { color: var(--ink); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--a); }
+.tabs button .tag { font: 500 0.72rem var(--font-mono); color: var(--muted); margin-left: 6px; letter-spacing: 0; }
+[hidden] { display: none !important; }
+
+/* 2D view */
+.bb-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+@media (max-width: 1020px) { .bb-grid { grid-template-columns: minmax(0, 1fr); } }
+.bb-side { display: grid; gap: 10px; grid-template-rows: 1fr 1fr; }
+#bbField { height: 560px; }
+#bbStand, #bbRes { height: 100%; min-height: 240px; }
+.bb-grid canvas { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; }
+@media (max-width: 560px) { #bbField { height: 480px; } }
+.run { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.bar { flex: 1; min-width: 120px; height: 6px; background: var(--chip); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--a); transition: width 0.2s linear; }
+.bb-status { font-family: var(--font-mono); font-size: 0.82rem; min-width: 0; font-variant-numeric: tabular-nums; color: var(--muted); }
+.seg.wide button { font-family: var(--font-body); padding: 6px 4px; }
+.seg button small { display: block; font: 400 0.7rem var(--font-mono); color: inherit; opacity: 0.75; }
+td.hl { font-weight: 600; }
+@media (max-width: 560px) { .tabs button .tag { display: none; } .tabs button { padding: 8px 12px 9px; } }
 </style>
 
 <div class="wrap">
   <header>
     <div>
       <h1>Shock Tube Lab</h1>
-      <p class="sub">A finite-volume solver for the 1D Euler equations running in your browser, plotted against the exact Riemann solution. Pick an experiment, change the scheme, and watch the shock, contact and expansion fan develop.</p>
+      <p class="sub" id="subline">A finite-volume solver for the 1D Euler equations running in your browser, plotted against the exact Riemann solution. Pick an experiment, change the scheme, and watch the shock, contact and expansion fan develop.</p>
     </div>
     <div class="src">port of <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">badrelsayedNYU/shock-tube-solver</a></div>
   </header>
 
-  <div class="layout">
+  <nav class="tabs" role="tablist" aria-label="Solver">
+    <button id="tab1d" role="tab" type="button" aria-selected="true">1D shock tube<span class="tag">Riemann problems</span></button>
+    <button id="tab2d" role="tab" type="button" aria-selected="false">2D blunt body<span class="tag">cylinder, M 2–8</span></button>
+  </nav>
+
+  <div class="layout" id="view1d">
     <aside class="rail">
       <section class="panel">
         <p class="label">Experiment</p>
@@ -216,6 +246,66 @@ footer a { color: var(--a); }
 
       <footer>
         Calorically perfect gas, γ = 1.4, nondimensional units, transmissive boundaries on x ∈ [0, 1]. Fluxes: Rusanov, Roe with optional Harten fix, and HLLC with Einfeldt wave speeds. Reconstruction: MUSCL on primitive variables with minmod, van Leer or superbee limiters. This page is a line-by-line JavaScript port of the Python solver; on the Sod problem at N = 400 it reproduces the repository's L1 errors, step counts and discontinuity widths exactly. Method and validation: <a href="https://github.com/badrelsayedNYU/shock-tube-solver" target="_blank" rel="noopener">README on GitHub</a>. Built by Badr Elsayed.
+      </footer>
+    </main>
+  </div>
+
+  <div class="layout" id="view2d" hidden>
+    <aside class="rail">
+      <section class="panel">
+        <p class="label">Free-stream Mach number</p>
+        <div class="seg" id="bbMach"></div>
+        <p class="label" style="margin-top:14px">Flux</p>
+        <div class="seg wide" id="bbFlux"></div>
+        <p class="label" style="margin-top:14px">Grid (radial × angular)</p>
+        <div class="seg wide" id="bbGrid"></div>
+        <p class="hint">Changing a setting starts a new run in the background. First order for 1,500 iterations to set up the shock, then MUSCL with the van Leer limiter, SSP-RK2 with local time steps at CFL 0.8.</p>
+      </section>
+      <section class="panel">
+        <p class="label">Try this</p>
+        <div class="chips" id="bbTry"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <div class="note" id="bbNote"><h2></h2><p></p></div>
+      <div class="run">
+        <div class="bar" aria-hidden="true"><i id="bbBar"></i></div>
+        <span class="bb-status" id="bbStatus" role="status"></span>
+      </div>
+
+      <div class="bb-grid">
+        <canvas id="bbField" aria-label="Mach number field around the cylinder, with the sonic line and Billig's shock shape"></canvas>
+        <div class="bb-side">
+          <canvas id="bbStand" aria-label="Shock standoff distance against Mach number, with Billig's correlation"></canvas>
+          <canvas id="bbRes" aria-label="Density residual history"></canvas>
+        </div>
+      </div>
+
+      <section class="panel">
+        <p class="label">This run against the references</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Quantity</th><th>This run</th><th>Reference</th><th>Difference</th><th>Check</th></tr></thead>
+            <tbody id="bbResults"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="bbRunInfo"></p>
+      </section>
+
+      <section class="panel">
+        <p class="label">Repository results, 96 × 144 grid, HLL + van Leer</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>M∞</th><th>Standoff Δ/R</th><th>Billig</th><th>Difference</th><th>p₀/p∞</th><th>Pitot (exact)</th><th>Difference</th></tr></thead>
+            <tbody id="bbRepo"></tbody>
+          </table>
+        </div>
+        <p class="hint">From <a href="https://github.com/badrelsayedNYU/shock-tube-solver/blob/main/results/blunt_body.md" target="_blank" rel="noopener" style="color:var(--a)">results/blunt_body.md</a>. The finer grid takes minutes in Python, so the browser runs coarser grids; the standoff is grid-independent to within about 1% (0.703, 0.701, 0.697 on 32 × 48, 64 × 96, 128 × 192 at M = 3).</p>
+      </section>
+
+      <footer>
+        Steady 2D Euler equations, γ = 1.4, on a body-fitted polar grid over the windward half of a unit cylinder (radial cells clustered at the wall). Slip wall, free stream on the outer arc, supersonic outflow on the plane x = 0. Standoff is read where the stagnation-line pressure crosses the midpoint between the free-stream and normal-shock values; stagnation pressure is extrapolated to the wall. References: Billig (1967) correlation Δ/R = 0.386 exp(4.67/M²) and the exact Rayleigh pitot formula. This tab is a line-by-line JavaScript port of <code>src/shocktube/blunt2d.py</code>; at M = 3 it reproduces the repository's grid-study values (Δ/R = 0.703 and 0.701, p₀/p∞ = 12.030 and 12.026 on 32 × 48 and 64 × 96). It also stops a run once the standoff and stagnation pressure stop changing, because a limited scheme's residual can plateau above the tolerance. Built by Badr Elsayed.
       </footer>
     </main>
   </div>
@@ -831,5 +921,758 @@ const ST = (() => {
   if (document.fonts) document.fonts.ready.then(draw);
 
   applyPreset("sod");
+})();
+</script>
+
+<script id="bbSrc">
+/* 2D Euler blunt-body solver: line-by-line port of src/shocktube/blunt2d.py.
+   Cell-centred finite volume on a polar O-grid sector around a unit cylinder,
+   MUSCL (primitive) + HLL/HLLC with Einfeldt speeds, SSP-RK2 with local time steps. */
+const BB = (() => {
+  const G = 1.4, NG = 2;
+
+  const LIMCODE = { none: 0, minmod: 1, vanleer: 2, superbee: 3 };
+  function slope(lim, dm, dp) {
+    if (dm === 0) return 0;
+    const r = dp / dm;
+    let f;
+    if (lim === 2) { const a = Math.abs(r); f = (r + a) / (1 + a); }
+    else if (lim === 1) f = Math.max(0, Math.min(1, r));
+    else f = Math.max(0, Math.min(2 * r, 1), Math.min(r, 2));
+    return f * dm;
+  }
+  const LIM = {
+    none: () => 0,
+    minmod: r => Math.max(0, Math.min(1, r)),
+    vanleer: r => (r + Math.abs(r)) / (1 + Math.abs(r)),
+    superbee: r => Math.max(0, Math.min(2 * r, 1), Math.min(r, 2)),
+  };
+
+  function billigStandoff(M) { return 0.386 * Math.exp(4.67 / (M * M)); }
+  function billigShockX(M, y) {
+    const beta = Math.asin(1 / M), Rc = 1.386 * Math.exp(1.8 / Math.pow(M - 1, 0.75));
+    const tb = Math.tan(beta);
+    return -(1 + billigStandoff(M)) + Rc / (tb * tb) * (Math.sqrt(1 + Math.pow(y * tb / Rc, 2)) - 1);
+  }
+  function outerRadius(M) {
+    let rn = 0;
+    for (const y of [0, 1, 2, 3]) rn = Math.max(rn, Math.hypot(billigShockX(M, y), y));
+    return Math.min(8, Math.max(2.6, 1.35 * rn));
+  }
+  function pitot(M, g = G) {
+    const a = Math.pow((g + 1) ** 2 * M * M / (4 * g * M * M - 2 * (g - 1)), g / (g - 1));
+    return a * (1 - g + 2 * g * M * M) / (g + 1);
+  }
+  function normalShockP(M, g = G) { return 1 + 2 * g / (g + 1) * (M * M - 1); }
+
+  // ---------------------------------------------------------------- grid
+  function makeGrid(Ni, Nj, rOuter, stretch, thetaMaxDeg = 90) {
+    const r = new Float64Array(Ni + 1), th = new Float64Array(Nj + 1);
+    for (let n = 0; n <= Ni; n++) {
+      const s = stretch === 1 ? n / Ni : (Math.pow(stretch, n) - 1) / (Math.pow(stretch, Ni) - 1);
+      r[n] = 1 + (rOuter - 1) * s;
+    }
+    const tm = thetaMaxDeg * Math.PI / 180;
+    for (let n = 0; n <= Nj; n++) th[n] = -tm + 2 * tm * n / Nj;
+    const NJn = Nj + 1;
+    const xn = new Float64Array((Ni + 1) * NJn), yn = new Float64Array((Ni + 1) * NJn);
+    for (let i = 0; i <= Ni; i++) for (let j = 0; j <= Nj; j++) {
+      xn[i * NJn + j] = -r[i] * Math.cos(th[j]);
+      yn[i * NJn + j] = r[i] * Math.sin(th[j]);
+    }
+    const N = (i, j) => i * NJn + j;
+    // i-faces: (Ni+1) x Nj, S = (-dy, dx) of segment (i,j)->(i,j+1)
+    const Six = new Float64Array((Ni + 1) * Nj), Siy = new Float64Array((Ni + 1) * Nj);
+    for (let i = 0; i <= Ni; i++) for (let j = 0; j < Nj; j++) {
+      const dx = xn[N(i, j + 1)] - xn[N(i, j)], dy = yn[N(i, j + 1)] - yn[N(i, j)];
+      Six[i * Nj + j] = -dy; Siy[i * Nj + j] = dx;
+    }
+    // j-faces: Ni x (Nj+1), S = (dy, -dx) of segment (i,j)->(i+1,j)
+    const Sjx = new Float64Array(Ni * NJn), Sjy = new Float64Array(Ni * NJn);
+    for (let i = 0; i < Ni; i++) for (let j = 0; j <= Nj; j++) {
+      const dx = xn[N(i + 1, j)] - xn[N(i, j)], dy = yn[N(i + 1, j)] - yn[N(i, j)];
+      Sjx[i * NJn + j] = dy; Sjy[i * NJn + j] = -dx;
+    }
+    const xc = new Float64Array(Ni * Nj), yc = new Float64Array(Ni * Nj), area = new Float64Array(Ni * Nj);
+    for (let i = 0; i < Ni; i++) for (let j = 0; j < Nj; j++) {
+      const x1 = xn[N(i, j)], y1 = yn[N(i, j)], x2 = xn[N(i + 1, j)], y2 = yn[N(i + 1, j)];
+      const x3 = xn[N(i + 1, j + 1)], y3 = yn[N(i + 1, j + 1)], x4 = xn[N(i, j + 1)], y4 = yn[N(i, j + 1)];
+      const c = i * Nj + j;
+      xc[c] = 0.25 * (x1 + x2 + x3 + x4); yc[c] = 0.25 * (y1 + y2 + y3 + y4);
+      area[c] = 0.5 * Math.abs((x1 * y2 - x2 * y1) + (x2 * y3 - x3 * y2) + (x3 * y4 - x4 * y3) + (x4 * y1 - x1 * y4));
+    }
+    return { Ni, Nj, r, th, xn, yn, xc, yc, area, Six, Siy, Sjx, Sjy };
+  }
+
+  // ---------------------------------------------------------------- fluxes in the rotated frame
+  // inputs: rotated primitive states (r, un, ut, p); writes normal-frame flux into out[0..3]
+  function speeds(rL, uL, tL, pL, rR, uR, tR, pR, g, sp) {
+    const aL = Math.sqrt(g * pL / rL), aR = Math.sqrt(g * pR / rR);
+    const wL = Math.sqrt(rL), wR = Math.sqrt(rR);
+    const HL = (g / (g - 1)) * pL / rL + 0.5 * (uL * uL + tL * tL);
+    const HR = (g / (g - 1)) * pR / rR + 0.5 * (uR * uR + tR * tR);
+    const u = (wL * uL + wR * uR) / (wL + wR), t = (wL * tL + wR * tR) / (wL + wR);
+    const H = (wL * HL + wR * HR) / (wL + wR);
+    const a = Math.sqrt(Math.max((g - 1) * (H - 0.5 * (u * u + t * t)), 1e-14));
+    sp[0] = Math.min(uL - aL, u - a); sp[1] = Math.max(uR + aR, u + a);
+  }
+  const sp = new Float64Array(2);
+
+  function hll(rL, uL, tL, pL, rR, uR, tR, pR, g, out) {
+    speeds(rL, uL, tL, pL, rR, uR, tR, pR, g, sp);
+    const EL = pL / (g - 1) + 0.5 * rL * (uL * uL + tL * tL), ER = pR / (g - 1) + 0.5 * rR * (uR * uR + tR * tR);
+    const SLm = Math.min(sp[0], 0), SRp = Math.max(sp[1], 0), inv = 1 / (SRp - SLm);
+    out[0] = (SRp * (rL * uL) - SLm * (rR * uR) + SLm * SRp * (rR - rL)) * inv;
+    out[1] = (SRp * (rL * uL * uL + pL) - SLm * (rR * uR * uR + pR) + SLm * SRp * (rR * uR - rL * uL)) * inv;
+    out[2] = (SRp * (rL * uL * tL) - SLm * (rR * uR * tR) + SLm * SRp * (rR * tR - rL * tL)) * inv;
+    out[3] = (SRp * (uL * (EL + pL)) - SLm * (uR * (ER + pR)) + SLm * SRp * (ER - EL)) * inv;
+  }
+
+  function hllc(rL, uL, tL, pL, rR, uR, tR, pR, g, out) {
+    speeds(rL, uL, tL, pL, rR, uR, tR, pR, g, sp);
+    const SL = sp[0], SR = sp[1];
+    const EL = pL / (g - 1) + 0.5 * rL * (uL * uL + tL * tL), ER = pR / (g - 1) + 0.5 * rR * (uR * uR + tR * tR);
+    if (SL >= 0) { out[0] = rL * uL; out[1] = rL * uL * uL + pL; out[2] = rL * uL * tL; out[3] = uL * (EL + pL); return; }
+    const Ss = (pR - pL + rL * uL * (SL - uL) - rR * uR * (SR - uR)) / (rL * (SL - uL) - rR * (SR - uR));
+    if (Ss >= 0) {
+      const c = rL * (SL - uL) / (SL - Ss);
+      out[0] = rL * uL + SL * (c - rL);
+      out[1] = rL * uL * uL + pL + SL * (c * Ss - rL * uL);
+      out[2] = rL * uL * tL + SL * (c * tL - rL * tL);
+      out[3] = uL * (EL + pL) + SL * (c * (EL / rL + (Ss - uL) * (Ss + pL / (rL * (SL - uL)))) - EL);
+      return;
+    }
+    if (SR >= 0) {
+      const c = rR * (SR - uR) / (SR - Ss);
+      out[0] = rR * uR + SR * (c - rR);
+      out[1] = rR * uR * uR + pR + SR * (c * Ss - rR * uR);
+      out[2] = rR * uR * tR + SR * (c * tR - rR * tR);
+      out[3] = uR * (ER + pR) + SR * (c * (ER / rR + (Ss - uR) * (Ss + pR / (rR * (SR - uR)))) - ER);
+      return;
+    }
+    out[0] = rR * uR; out[1] = rR * uR * uR + pR; out[2] = rR * uR * tR; out[3] = uR * (ER + pR);
+  }
+
+  // ---------------------------------------------------------------- solver
+  function solve(M, o = {}) {
+    const Ni = o.Ni || 32, Nj = o.Nj || 48, g = G;
+    const grid = makeGrid(Ni, Nj, outerRadius(M), Math.pow(1.03, 64 / Ni));
+    const flux = o.flux === "hllc" ? hllc : hll;
+    const phi2 = LIMCODE[o.limiter || "vanleer"], phi1 = 0;
+    const cfl = o.cfl || 0.8, firstIters = o.firstOrderIters ?? 1500, maxIters = o.maxIters || 9000, tol = o.tol || 1e-4;
+    const onProgress = o.onProgress || null, progressEvery = o.progressEvery || 100;
+
+    const NIp = Ni + 2 * NG, NJp = Nj + 2 * NG, nP = NIp * NJp, nC = Ni * Nj;
+    const Winf = [1, M, 0, 1 / g];
+    const Einf = Winf[3] / (g - 1) + 0.5 * M * M;
+    const U = [new Float64Array(nC).fill(1), new Float64Array(nC).fill(M), new Float64Array(nC), new Float64Array(nC).fill(Einf)];
+    const U1 = U.map(() => new Float64Array(nC)), R0 = U.map(() => new Float64Array(nC)), R1 = U.map(() => new Float64Array(nC));
+    const dt = new Float64Array(nC);
+    const P = [0, 1, 2, 3].map(() => new Float64Array(nP));
+    // reconstructed face states per cell: plus (right/outer face) and minus (left/inner face), per direction
+    const Pi = [0, 1, 2, 3].map(() => new Float64Array(nP)), Mi = [0, 1, 2, 3].map(() => new Float64Array(nP));
+    const Pj = [0, 1, 2, 3].map(() => new Float64Array(nP)), Mj = [0, 1, 2, 3].map(() => new Float64Array(nP));
+    const Fi = [0, 1, 2, 3].map(() => new Float64Array((Ni + 1) * Nj)), Fj = [0, 1, 2, 3].map(() => new Float64Array(Ni * (Nj + 1)));
+    const out = new Float64Array(4);
+    const pidx = (i, j) => (i + NG) * NJp + (j + NG);   // i, j are interior cell indices (may be negative for ghosts)
+
+    // wall normals per j (unit), from Si at i = 0
+    const wnx = new Float64Array(Nj), wny = new Float64Array(Nj);
+    for (let j = 0; j < Nj; j++) { const sx = grid.Six[j], sy = grid.Siy[j], l = Math.hypot(sx, sy); wnx[j] = sx / l; wny[j] = sy / l; }
+    // unit face normals and lengths
+    const iL = new Float64Array((Ni + 1) * Nj), iNx = new Float64Array(iL.length), iNy = new Float64Array(iL.length);
+    for (let k = 0; k < iL.length; k++) { const l = Math.hypot(grid.Six[k], grid.Siy[k]); iL[k] = l; iNx[k] = grid.Six[k] / l; iNy[k] = grid.Siy[k] / l; }
+    const jL = new Float64Array(Ni * (Nj + 1)), jNx = new Float64Array(jL.length), jNy = new Float64Array(jL.length);
+    for (let k = 0; k < jL.length; k++) { const l = Math.hypot(grid.Sjx[k], grid.Sjy[k]); jL[k] = l; jNx[k] = grid.Sjx[k] / l; jNy[k] = grid.Sjy[k] / l; }
+    // averaged face vectors per cell for the local time step
+    const sxi = new Float64Array(nC), syi = new Float64Array(nC), sxj = new Float64Array(nC), syj = new Float64Array(nC);
+    const lsi = new Float64Array(nC), lsj = new Float64Array(nC), invA = new Float64Array(nC);
+    for (let i = 0; i < Ni; i++) for (let j = 0; j < Nj; j++) {
+      const c = i * Nj + j;
+      sxi[c] = 0.5 * (grid.Six[(i + 1) * Nj + j] + grid.Six[i * Nj + j]); syi[c] = 0.5 * (grid.Siy[(i + 1) * Nj + j] + grid.Siy[i * Nj + j]);
+      sxj[c] = 0.5 * (grid.Sjx[i * (Nj + 1) + j + 1] + grid.Sjx[i * (Nj + 1) + j]); syj[c] = 0.5 * (grid.Sjy[i * (Nj + 1) + j + 1] + grid.Sjy[i * (Nj + 1) + j]);
+      lsi[c] = Math.sqrt(sxi[c] * sxi[c] + syi[c] * syi[c]); lsj[c] = Math.sqrt(sxj[c] * sxj[c] + syj[c] * syj[c]);
+      invA[c] = 1 / grid.area[c];
+    }
+
+    function fillPrim(Uc) {
+      const [P0, P1, P2, P3] = P;
+      for (let i = 0; i < Ni; i++) for (let j = 0; j < Nj; j++) {
+        const c = i * Nj + j, k = pidx(i, j), rho = Uc[0][c], u = Uc[1][c] / rho, v = Uc[2][c] / rho;
+        P0[k] = rho; P1[k] = u; P2[k] = v; P3[k] = (g - 1) * (Uc[3][c] - 0.5 * rho * (u * u + v * v));
+      }
+      // wall ghosts
+      for (let kk = 0; kk < NG; kk++) for (let j = 0; j < Nj; j++) {
+        const s = pidx(kk, j), d = pidx(-1 - kk, j);
+        const un = P1[s] * wnx[j] + P2[s] * wny[j];
+        P0[d] = P0[s]; P1[d] = P1[s] - 2 * un * wnx[j]; P2[d] = P2[s] - 2 * un * wny[j]; P3[d] = P3[s];
+      }
+      // outer free stream
+      for (let kk = 0; kk < NG; kk++) for (let j = 0; j < Nj; j++) {
+        const d = pidx(Ni + kk, j);
+        P0[d] = Winf[0]; P1[d] = Winf[1]; P2[d] = Winf[2]; P3[d] = Winf[3];
+      }
+      // theta = +/-90 deg zero gradient, all padded rows (fills corners)
+      for (let ip = 0; ip < NIp; ip++) {
+        const row = ip * NJp;
+        for (let q = 0; q < 4; q++) {
+          const A = P[q];
+          for (let jj = 0; jj < NG; jj++) { A[row + jj] = A[row + NG]; A[row + NJp - 1 - jj] = A[row + NJp - NG - 1]; }
+        }
+      }
+    }
+
+    // MUSCL slopes for cells along one direction: stride = NJp (i) or 1 (j)
+    function reconstruct(lim, stride, plus, minus, iLo, iHi, jLo, jHi) {
+      const [A0, A1, A2, A3] = P, [p0a, p1a, p2a, p3a] = plus, [m0a, m1a, m2a, m3a] = minus;
+      for (let i = iLo; i <= iHi; i++) {
+        let k = pidx(i, jLo);
+        for (let j = jLo; j <= jHi; j++, k++) {
+          const c0 = A0[k], c1 = A1[k], c2 = A2[k], c3 = A3[k];
+          let d0 = 0, d1 = 0, d2 = 0, d3 = 0;
+          if (lim !== 0) {
+            d0 = slope(lim, c0 - A0[k - stride], A0[k + stride] - c0);
+            d1 = slope(lim, c1 - A1[k - stride], A1[k + stride] - c1);
+            d2 = slope(lim, c2 - A2[k - stride], A2[k + stride] - c2);
+            d3 = slope(lim, c3 - A3[k - stride], A3[k + stride] - c3);
+            if (c0 - 0.5 * d0 <= 0 || c0 + 0.5 * d0 <= 0 || c3 - 0.5 * d3 <= 0 || c3 + 0.5 * d3 <= 0) { d0 = d1 = d2 = d3 = 0; }
+          }
+          p0a[k] = c0 + 0.5 * d0; m0a[k] = c0 - 0.5 * d0;
+          p1a[k] = c1 + 0.5 * d1; m1a[k] = c1 - 0.5 * d1;
+          p2a[k] = c2 + 0.5 * d2; m2a[k] = c2 - 0.5 * d2;
+          p3a[k] = c3 + 0.5 * d3; m3a[k] = c3 - 0.5 * d3;
+        }
+      }
+    }
+
+    function faceFlux(WL, kL, WR, kR, nx, ny, len, F, f) {
+      const uxL = WL[1][kL], uyL = WL[2][kL], uxR = WR[1][kR], uyR = WR[2][kR];
+      flux(WL[0][kL], uxL * nx + uyL * ny, -uxL * ny + uyL * nx, WL[3][kL],
+           WR[0][kR], uxR * nx + uyR * ny, -uxR * ny + uyR * nx, WR[3][kR], g, out);
+      const o0 = out[0], o1 = out[1], o2 = out[2], o3 = out[3];
+      F[0][f] = o0 * len;
+      F[1][f] = (o1 * nx - o2 * ny) * len;
+      F[2][f] = (o1 * ny + o2 * nx) * len;
+      F[3][f] = o3 * len;
+    }
+
+    function residual(Uc, phi, R) {
+      fillPrim(Uc);
+      reconstruct(phi, NJp, Pi, Mi, -1, Ni, 0, Nj - 1);   // i-direction: cells -1..Ni
+      reconstruct(phi, 1, Pj, Mj, 0, Ni - 1, -1, Nj);     // j-direction: cells -1..Nj
+      for (let f = 0; f <= Ni; f++) for (let j = 0; j < Nj; j++) {
+        const k = f * Nj + j;
+        faceFlux(Pi, pidx(f - 1, j), Mi, pidx(f, j), iNx[k], iNy[k], iL[k], Fi, k);
+      }
+      for (let i = 0; i < Ni; i++) for (let f = 0; f <= Nj; f++) {
+        const k = i * (Nj + 1) + f;
+        faceFlux(Pj, pidx(i, f - 1), Mj, pidx(i, f), jNx[k], jNy[k], jL[k], Fj, k);
+      }
+      for (let q = 0; q < 4; q++) {
+        const A = Fi[q], B = Fj[q], Rq = R[q];
+        for (let i = 0; i < Ni; i++) {
+          const a0 = i * Nj, a1 = a0 + Nj, b0 = i * (Nj + 1);
+          for (let j = 0; j < Nj; j++) {
+            Rq[a0 + j] = -((A[a1 + j] - A[a0 + j]) + (B[b0 + j + 1] - B[b0 + j])) * invA[a0 + j];
+          }
+        }
+      }
+    }
+
+    function localDt() {
+      for (let c = 0; c < nC; c++) {
+        const rho = U[0][c], u = U[1][c] / rho, v = U[2][c] / rho, p = (g - 1) * (U[3][c] - 0.5 * rho * (u * u + v * v));
+        const a = Math.sqrt(g * p / rho);
+        const lam = Math.abs(u * sxi[c] + v * syi[c]) + a * lsi[c] + Math.abs(u * sxj[c] + v * syj[c]) + a * lsj[c];
+        dt[c] = cfl * grid.area[c] / lam;
+      }
+    }
+
+    const res = [];
+    let r0 = 0, it = 0, converged = false, diverged = false, outputsSteady = false, steadyHits = 0, lastOut = null;
+    function snapshot() {
+      const W = [0, 1, 2, 3].map(() => new Float64Array(nC));
+      for (let c = 0; c < nC; c++) {
+        const rho = U[0][c], u = U[1][c] / rho, v = U[2][c] / rho;
+        W[0][c] = rho; W[1][c] = u; W[2][c] = v; W[3][c] = (g - 1) * (U[3][c] - 0.5 * rho * (u * u + v * v));
+      }
+      return { M, Ni, Nj, grid, W };
+    }
+    const t0 = Date.now();
+    for (it = 1; it <= maxIters; it++) {
+      const phi = it <= firstIters ? phi1 : phi2;
+      localDt();
+      residual(U, phi, R0);
+      for (let q = 0; q < 4; q++) for (let c = 0; c < nC; c++) U1[q][c] = U[q][c] + dt[c] * R0[q][c];
+      residual(U1, phi, R1);
+      for (let q = 0; q < 4; q++) for (let c = 0; c < nC; c++) U[q][c] = 0.5 * U[q][c] + 0.5 * (U1[q][c] + dt[c] * R1[q][c]);
+      let s = 0;
+      for (let c = 0; c < nC; c++) s += R0[0][c] * R0[0][c];
+      const rn = Math.sqrt(s / nC);
+      if (!isFinite(rn)) { diverged = true; break; }
+      if (!r0) r0 = rn;
+      res.push(rn / r0);
+      if (onProgress && it % progressEvery === 0) onProgress(it, rn / r0);
+      if (o.onSnapshot && it % (o.snapshotEvery || 250) === 0) o.onSnapshot(it, machField(snapshot()));
+      if (it > firstIters + 200 && rn / r0 < tol) { converged = true; break; }
+      // engineering convergence: the residual of a limited scheme can plateau; stop once the two
+      // outputs of interest (standoff, stagnation pressure) have stopped changing
+      if (o.steadyOutputs !== false && it > firstIters + 500 && it % 250 === 0) {
+        const snap = snapshot();
+        const d = standoff(snap), p0 = stagnationPressure(snap);
+        if (lastOut && Math.abs(d - lastOut[0]) < 2e-4 * Math.abs(d) && Math.abs(p0 - lastOut[1]) < 2e-4 * p0) {
+          if (++steadyHits >= 2) { outputsSteady = true; break; }
+        } else steadyHits = 0;
+        lastOut = [d, p0];
+      }
+    }
+    if (it > maxIters) it = maxIters;
+    const snap = snapshot();
+    return { ...snap, iterations: it, residuals: res, converged, outputsSteady, diverged, ms: Date.now() - t0, flux: o.flux || "hll" };
+  }
+
+  // ---------------------------------------------------------------- post-processing
+  function stagnationLine(R) {
+    const { Ni, Nj, grid, W } = R, j = Nj >> 1;
+    const r = new Float64Array(Ni), p = new Float64Array(Ni);
+    for (let i = 0; i < Ni; i++) {
+      if (Nj % 2 === 0) {
+        const a = i * Nj + j - 1, b = i * Nj + j;
+        p[i] = 0.5 * (W[3][a] + W[3][b]);
+        r[i] = 0.5 * (Math.hypot(grid.xc[a], grid.yc[a]) + Math.hypot(grid.xc[b], grid.yc[b]));
+      } else {
+        const b = i * Nj + j;
+        p[i] = W[3][b]; r[i] = Math.hypot(grid.xc[b], grid.yc[b]);
+      }
+    }
+    return { r, p };
+  }
+  function standoff(R) {
+    const { r, p } = stagnationLine(R), pinf = 1 / G, pmid = 0.5 * (pinf + pinf * normalShockP(R.M));
+    for (let i = r.length - 1; i > 0; i--) {
+      if (p[i] < pmid && pmid <= p[i - 1]) return r[i] + (pmid - p[i]) * (r[i - 1] - r[i]) / (p[i - 1] - p[i]) - 1;
+    }
+    return NaN;
+  }
+  function stagnationPressure(R) {
+    const { r, p } = stagnationLine(R);
+    return (p[0] + (p[0] - p[1]) * (r[0] - 1) / (r[1] - r[0])) * G;
+  }
+  function machField(R) {
+    const n = R.Ni * R.Nj, m = new Float64Array(n), W = R.W;
+    for (let c = 0; c < n; c++) m[c] = Math.hypot(W[1][c], W[2][c]) / Math.sqrt(G * W[3][c] / W[0][c]);
+    return m;
+  }
+  function shockLocation(R) {
+    const { Ni, Nj, grid, W } = R, pinf = 1 / G, pts = [];
+    for (let j = 0; j < Nj; j++) {
+      let mx = -Infinity;
+      for (let i = 0; i < Ni; i++) mx = Math.max(mx, W[3][i * Nj + j]);
+      const mid = 0.5 * (pinf + mx);
+      for (let i = Ni - 1; i > 0; i--) {
+        const a = W[3][i * Nj + j], b = W[3][(i - 1) * Nj + j];
+        if (a < mid && mid <= b) {
+          const f = (mid - a) / (b - a), ca = i * Nj + j, cb = (i - 1) * Nj + j;
+          const ra = Math.hypot(grid.xc[ca], grid.yc[ca]), rb = Math.hypot(grid.xc[cb], grid.yc[cb]);
+          const rs = ra + f * (rb - ra), th = Math.atan2(grid.yc[ca], -grid.xc[ca]);
+          pts.push([-rs * Math.cos(th), rs * Math.sin(th)]);
+          break;
+        }
+      }
+    }
+    return pts;
+  }
+
+  return { solve, standoff, stagnationPressure, machField, shockLocation, billigStandoff, billigShockX, pitot, outerRadius, makeGrid };
+})();
+if (typeof module !== "undefined") module.exports = BB;
+</script>
+<script>
+/* Tabs + 2D blunt-body UI. The solver runs in a Web Worker built from the BB source above. */
+(() => {
+  const $ = id => document.getElementById(id);
+  const MACHS = [2, 3, 4, 6, 8];
+  const FLUXES = [["hll", "HLL", "default"], ["hllc", "HLLC", "carbuncle-prone"]];
+  const GRIDS = [["32x48", "32 × 48", "fast, ~3 s"], ["64x96", "64 × 96", "accurate, 15–30 s"]];
+  const MAX_ITERS = 6000;
+  const REPO = [[2, 1.325, 5.64], [3, 0.697, 12.04], [4, 0.541, 21.05], [6, 0.445, 46.74], [8, 0.416, 81.66]];
+  const TRY = [
+    ["Default: Mach 4", { M: 4, flux: "hll", grid: "32x48" }],
+    ["Grid study: Mach 3 on 64 × 96", { M: 3, flux: "hll", grid: "64x96" }],
+    ["Carbuncle: HLLC at Mach 6", { M: 6, flux: "hllc", grid: "64x96" }],
+    ["Same case with HLL", { M: 6, flux: "hll", grid: "64x96" }],
+  ];
+
+  // ---------- tabs ----------
+  const SUBS = {
+    "1d": "A finite-volume solver for the 1D Euler equations running in your browser, plotted against the exact Riemann solution. Pick an experiment, change the scheme, and watch the shock, contact and expansion fan develop.",
+    "2d": "The same building blocks extended to two dimensions: supersonic flow over a circular cylinder, solved to steady state in your browser. The detached bow shock is checked against Billig's correlation and the stagnation pressure against the exact pitot formula.",
+  };
+  let started2d = false;
+  function showTab(t) {
+    $("tab1d").setAttribute("aria-selected", t === "1d");
+    $("tab2d").setAttribute("aria-selected", t === "2d");
+    $("view1d").hidden = t !== "1d";
+    $("view2d").hidden = t !== "2d";
+    $("subline").textContent = SUBS[t];
+    try { history.replaceState(null, "", t === "2d" ? "#blunt-body" : location.pathname + location.search); } catch (e) {}
+    if (t === "2d") { if (!started2d) { started2d = true; go(); } else requestAnimationFrame(draw); }
+  }
+  $("tab1d").addEventListener("click", () => showTab("1d"));
+  $("tab2d").addEventListener("click", () => showTab("2d"));
+
+  // ---------- settings ----------
+  const S = { M: 4, flux: "hll", grid: "32x48" };
+  function seg(el, items, key, cast) {
+    el.innerHTML = items.map(([v, lab, small]) => `<button type="button" data-v="${v}">${lab}${small ? `<small>${small}</small>` : ""}</button>`).join("");
+    el.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      S[key] = cast(b.dataset.v); syncControls(); go();
+    });
+  }
+  seg($("bbMach"), MACHS.map(m => [m, String(m)]), "M", Number);
+  seg($("bbFlux"), FLUXES, "flux", String);
+  seg($("bbGrid"), GRIDS, "grid", String);
+  $("bbTry").innerHTML = TRY.map(([lab], i) => `<button type="button" class="chip${i === 2 ? " warn" : ""}" data-i="${i}">${lab}</button>`).join("");
+  $("bbTry").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    Object.assign(S, TRY[+b.dataset.i][1]); syncControls(); go();
+  });
+  function syncControls() {
+    for (const b of $("bbMach").children) b.setAttribute("aria-pressed", +b.dataset.v === S.M);
+    for (const b of $("bbFlux").children) b.setAttribute("aria-pressed", b.dataset.v === S.flux);
+    for (const b of $("bbGrid").children) b.setAttribute("aria-pressed", b.dataset.v === S.grid);
+    for (const b of $("bbTry").children) {
+      const s = TRY[+b.dataset.i][1];
+      b.setAttribute("aria-pressed", s.M === S.M && s.flux === S.flux && s.grid === S.grid);
+    }
+  }
+  syncControls();
+
+  // ---------- worker ----------
+  const SRC = $("bbSrc").textContent + `
+self.onmessage = e => {
+  const { M, Ni, Nj, flux, maxIters } = e.data;
+  const R = BB.solve(M, { Ni, Nj, flux, maxIters, progressEvery: 50,
+    onProgress: (it, r) => postMessage({ type: "progress", it, res: r }),
+    snapshotEvery: 250, onSnapshot: (it, m) => postMessage({ type: "snap", it, mach: Float32Array.from(m) }) });
+  postMessage({ type: "done", M, Ni, Nj, flux, mach: Float32Array.from(BB.machField(R)), standoff: BB.standoff(R),
+    p0: BB.stagnationPressure(R), iterations: R.iterations, converged: R.converged, outputsSteady: R.outputsSteady,
+    diverged: R.diverged, ms: R.ms, residuals: Float32Array.from(R.residuals) });
+};`;
+  let workerURL = null;
+  try { workerURL = URL.createObjectURL(new Blob([SRC], { type: "text/javascript" })); } catch (e) { workerURL = null; }
+
+  const cache = new Map();
+  let worker = null, live = null, run = null, gridCache = new Map();
+  const key = s => `${s.M}|${s.flux}|${s.grid}`;
+  function gridFor(M, g) {
+    const k = M + "|" + g;
+    if (!gridCache.has(k)) { const [Ni, Nj] = g.split("x").map(Number); gridCache.set(k, BB.makeGrid(Ni, Nj, BB.outerRadius(M), Math.pow(1.03, 64 / Ni))); }
+    return gridCache.get(k);
+  }
+
+  function go() {
+    if (worker) { worker.terminate(); worker = null; }
+    renderNote();
+    const k = key(S);
+    if (cache.has(k)) { run = cache.get(k); live = null; finish(run, true); return; }
+    const [Ni, Nj] = S.grid.split("x").map(Number);
+    const job = { M: S.M, Ni, Nj, flux: S.flux, maxIters: MAX_ITERS };
+    live = { ...job, grid: gridFor(S.M, S.grid), mach: null, res: [], it: 0, t0: performance.now(), key: k };
+    run = null;
+    $("bbResults").innerHTML = `<tr><td colspan="5" style="color:var(--muted)">Running…</td></tr>`;
+    $("bbRunInfo").textContent = "";
+    setStatus();
+    if (workerURL) {
+      try {
+        worker = new Worker(workerURL);
+        worker.onmessage = onMsg;
+        worker.onerror = () => { worker = null; runInline(job); };
+        worker.postMessage(job);
+        return;
+      } catch (e) { worker = null; }
+    }
+    runInline(job);
+  }
+  function runInline(job) {
+    // Fallback when workers are unavailable: run on the main thread after the status paints.
+    setTimeout(() => {
+      const R = BB.solve(job.M, { ...job, onProgress: (it, r) => { live.res.push([it, r]); live.it = it; } });
+      onMsg({ data: { type: "done", ...job, mach: BB.machField(R), standoff: BB.standoff(R), p0: BB.stagnationPressure(R),
+        iterations: R.iterations, converged: R.converged, outputsSteady: R.outputsSteady, diverged: R.diverged, ms: R.ms, residuals: R.residuals } });
+    }, 30);
+  }
+  let rafPending = false;
+  function onMsg(e) {
+    const d = e.data;
+    if (!live) return;
+    if (d.type === "progress") { live.res.push([d.it, d.res]); live.it = d.it; setStatus(); queueDraw(); }
+    else if (d.type === "snap") { live.mach = d.mach; queueDraw(); }
+    else if (d.type === "done") {
+      const r = { ...d, key: live.key, grid: live.grid };
+      cache.set(r.key, r);
+      if (worker) { worker.terminate(); worker = null; }
+      live = null; run = r; finish(r, false);
+    }
+  }
+  function queueDraw() { if (rafPending) return; rafPending = true; requestAnimationFrame(() => { rafPending = false; draw(); }); }
+
+  const n0 = v => v.toLocaleString("en-US");
+  const sec = ms => (ms / 1000).toFixed(ms < 10000 ? 1 : 0) + " s";
+  function setStatus() {
+    if (live) {
+      const last = live.res.length ? live.res[live.res.length - 1][1] : NaN;
+      $("bbStatus").textContent = `Iteration ${n0(live.it)} · residual ${Number.isFinite(last) ? last.toExponential(1) : "…"} · ${sec(performance.now() - live.t0)}`;
+      $("bbBar").style.width = Math.min(100, 100 * live.it / MAX_ITERS) + "%";
+    }
+  }
+  function statusText(r) {
+    const last = r.residuals[r.residuals.length - 1];
+    if (r.diverged) return `Diverged at iteration ${n0(r.iterations)}`;
+    if (r.converged) return `Converged in ${n0(r.iterations)} iterations (residual below 1e-4)`;
+    if (r.outputsSteady) return `Outputs steady after ${n0(r.iterations)} iterations; residual plateaued at ${last.toExponential(1)}`;
+    return `Stopped at ${n0(r.iterations)} iterations; residual stalled at ${last.toExponential(1)}`;
+  }
+  function finish(r, fromCache) {
+    $("bbBar").style.width = "100%";
+    $("bbStatus").textContent = statusText(r) + ` · ${sec(r.ms)}${fromCache ? " (cached)" : ""}`;
+    renderTable(r); draw();
+  }
+
+  // ---------- note + table ----------
+  function renderNote() {
+    const note = $("bbNote");
+    let h, p, warn = false;
+    if (S.flux === "hllc" && S.M >= 4) {
+      warn = true; h = "HLLC and the carbuncle";
+      p = "HLLC was the best flux in 1D, but at a strong, grid-aligned bow shock its contact wave lets a disturbance grow along the stagnation line. The residual stalls and the stagnation pressure comes out several percent high. HLL has no contact wave and converges cleanly on the same case.";
+    } else if (S.flux === "hllc") {
+      h = `HLLC at Mach ${S.M}`;
+      p = "At low Mach number the bow shock is weak enough that HLLC usually behaves. Try Mach 6 to see it fail.";
+    } else {
+      h = `Bow shock on a cylinder at Mach ${S.M}`;
+      p = "A detached bow shock stands ahead of the nose. Inside the white sonic line the flow is subsonic; around the shoulders it accelerates back to supersonic. The dashed line is Billig's empirical shock shape.";
+    }
+    note.querySelector("h2").textContent = h; note.querySelector("p").textContent = p;
+    note.classList.toggle("warn", warn);
+  }
+  function renderTable(r) {
+    const dB = BB.billigStandoff(r.M), pP = BB.pitot(r.M);
+    const dd = 100 * (r.standoff / dB - 1), dp = 100 * (r.p0 / pP - 1);
+    const pill = ok => `<span class="pill ${ok ? "ok" : "fail"}">${ok ? "Pass" : "Off"}</span>`;
+    const sgn = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(Math.abs(v) < 1 ? 2 : 1) + "%";
+    const okD = Number.isFinite(dd) && Math.abs(dd) <= 10, okP = Number.isFinite(dp) && Math.abs(dp) <= 1;
+    $("bbResults").innerHTML = `
+      <tr><td>Shock standoff Δ/R</td><td class="num hl">${Number.isFinite(r.standoff) ? r.standoff.toFixed(3) : "—"}</td><td class="num">${dB.toFixed(3)} (Billig)</td><td class="num">${Number.isFinite(dd) ? sgn(dd) : "—"}</td><td>${pill(okD)}</td></tr>
+      <tr><td>Stagnation pressure p₀/p∞</td><td class="num hl">${Number.isFinite(r.p0) ? r.p0.toFixed(2) : "—"}</td><td class="num">${pP.toFixed(2)} (exact pitot)</td><td class="num">${Number.isFinite(dp) ? sgn(dp) : "—"}</td><td>${pill(okP)}</td></tr>`;
+    const g = r.grid;
+    $("bbRunInfo").textContent = `${FLUXES.find(f => f[0] === r.flux)[1]} flux, ${g.Ni} × ${g.Nj} grid, outer boundary at r = ${g.r[g.Ni].toFixed(2)} R · ${n0(r.iterations)} iterations in ${sec(r.ms)} in this browser. Pass bands: standoff within 10% of the correlation (an empirical fit to experiments), stagnation pressure within 1% of the exact value.`;
+  }
+  $("bbRepo").innerHTML = REPO.map(([M, d, p]) => {
+    const dB = BB.billigStandoff(M), pP = BB.pitot(M);
+    const f = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(Math.abs(v) < 1 ? 2 : 1) + "%";
+    return `<tr><td class="num">${M}</td><td class="num">${d.toFixed(3)}</td><td class="num">${dB.toFixed(3)}</td><td class="num">${f(100 * (d / dB - 1))}</td><td class="num">${p.toFixed(2)}</td><td class="num">${pP.toFixed(2)}</td><td class="num">${f(100 * (p / pP - 1))}</td></tr>`;
+  }).join("");
+
+  // ---------- drawing ----------
+  const css = () => { const s = getComputedStyle(document.documentElement); const g = k => s.getPropertyValue(k).trim();
+    return { ink: g("--ink"), muted: g("--muted"), grid: g("--grid"), rule: g("--rule"), a: g("--a"), b: g("--b"), surface: g("--surface"), chip: g("--chip"), bad: g("--bad") }; };
+  const mono = () => getComputedStyle(document.body).getPropertyValue("--font-mono");
+  const disp = () => getComputedStyle(document.body).getPropertyValue("--font-display");
+  function setup(cv) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (cv.width !== Math.round(w * dpr) || cv.height !== Math.round(h * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    const ctx = cv.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+    return { ctx, w, h };
+  }
+  function ticks(lo, hi, n = 4) {
+    const span = hi - lo, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw) || 10 * mag;
+    const out = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-12; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+    return out;
+  }
+  const lab = v => (Math.abs(v) < 1e-9 ? "0" : +v.toFixed(2) + "");
+  // viridis, 9 stops
+  const VIR = ["#440154", "#472d7b", "#3b528b", "#2c728e", "#21918c", "#28ae80", "#5ec962", "#addc30", "#fde725"].map(h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)));
+  function vir(t) {
+    t = Math.min(1, Math.max(0, t)) * (VIR.length - 1);
+    const i = Math.min(VIR.length - 2, Math.floor(t)), f = t - i, a = VIR[i], b = VIR[i + 1];
+    return `rgb(${Math.round(a[0] + f * (b[0] - a[0]))},${Math.round(a[1] + f * (b[1] - a[1]))},${Math.round(a[2] + f * (b[2] - a[2]))})`;
+  }
+
+  function current() {
+    if (live) return { M: live.M, grid: live.grid, mach: live.mach, res: live.res.map(p => p[1]), resIt: live.res.map(p => p[0]), running: true };
+    if (run) return { M: run.M, grid: run.grid, mach: run.mach, res: Array.from(run.residuals), resIt: null, running: false, standoff: run.standoff, flux: run.flux };
+    return null;
+  }
+
+  function drawField(C, cur) {
+    const { ctx, w, h } = setup($("bbField"));
+    if (!cur) return;
+    const g = cur.grid, M = cur.M, rO = g.r[g.Ni];
+    const m = { l: 44, r: 70, t: 34, b: 34 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    const x0 = -rO - 0.15, x1 = 0.35, y0 = -rO - 0.15, y1 = rO + 0.15;
+    const s = Math.min(pw / (x1 - x0), ph / (y1 - y0));
+    const ox = m.l + (pw - s * (x1 - x0)) / 2, oy = m.t + (ph - s * (y1 - y0)) / 2;
+    const X = x => ox + (x - x0) * s, Y = y => oy + (y1 - y) * s;
+    const NJn = g.Nj + 1, vmax = M * 1.01;
+    // axes
+    ctx.font = "500 11px " + mono(); ctx.lineWidth = 1; ctx.fillStyle = C.muted;
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const v of ticks(x0, x1, 4)) { ctx.fillText(lab(v), X(v), Y(y0) + 6); ctx.strokeStyle = C.rule; ctx.beginPath(); ctx.moveTo(X(v) + 0.5, Y(y0)); ctx.lineTo(X(v) + 0.5, Y(y0) + 4); ctx.stroke(); }
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (const v of ticks(y0, y1, 6)) { ctx.fillText(lab(v), X(x0) - 6, Y(v)); ctx.strokeStyle = C.rule; ctx.beginPath(); ctx.moveTo(X(x0) - 4, Y(v) + 0.5); ctx.lineTo(X(x0), Y(v) + 0.5); ctx.stroke(); }
+    ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillText("x / R", X((x0 + x1) / 2), Y(y0) + 20);
+    ctx.save(); ctx.translate(12, Y(0)); ctx.rotate(-Math.PI / 2); ctx.textBaseline = "middle"; ctx.fillText("y / R", 0, 0); ctx.restore();
+    ctx.strokeStyle = C.rule; ctx.strokeRect(X(x0) + 0.5, Y(y1) + 0.5, (x1 - x0) * s - 1, (y1 - y0) * s - 1);
+    // title
+    ctx.font = "600 13px " + disp(); ctx.fillStyle = C.ink; ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillText(`Mach number, M∞ = ${M}` + (cur.running ? " (solving…)" : ""), m.l, 20);
+    // field
+    ctx.save(); ctx.beginPath(); ctx.rect(X(x0), Y(y1), (x1 - x0) * s, (y1 - y0) * s); ctx.clip();
+    const mach = cur.mach;
+    ctx.lineWidth = 0.7; ctx.lineJoin = "round";
+    for (let i = 0; i < g.Ni; i++) for (let j = 0; j < g.Nj; j++) {
+      const col = mach ? vir(mach[i * g.Nj + j] / vmax) : vir(1 / 1.01);
+      const a = i * NJn + j, b = (i + 1) * NJn + j;
+      ctx.fillStyle = col; ctx.strokeStyle = col;
+      ctx.beginPath(); ctx.moveTo(X(g.xn[a]), Y(g.yn[a])); ctx.lineTo(X(g.xn[b]), Y(g.yn[b]));
+      ctx.lineTo(X(g.xn[b + 1]), Y(g.yn[b + 1])); ctx.lineTo(X(g.xn[a + 1]), Y(g.yn[a + 1])); ctx.closePath(); ctx.fill(); ctx.stroke();
+    }
+    // sonic line: marching squares on the cell-centre lattice
+    if (mach) {
+      ctx.strokeStyle = "#ffffff"; ctx.lineWidth = 1.5; ctx.beginPath();
+      const val = (i, j) => mach[i * g.Nj + j] - 1, cx = (i, j) => g.xc[i * g.Nj + j], cy = (i, j) => g.yc[i * g.Nj + j];
+      for (let i = 0; i < g.Ni - 1; i++) for (let j = 0; j < g.Nj - 1; j++) {
+        const c = [[i, j], [i + 1, j], [i + 1, j + 1], [i, j + 1]], pts = [];
+        for (let e = 0; e < 4; e++) {
+          const [ia, ja] = c[e], [ib, jb] = c[(e + 1) % 4], va = val(ia, ja), vb = val(ib, jb);
+          if ((va < 0) !== (vb < 0)) { const t = va / (va - vb); pts.push([cx(ia, ja) + t * (cx(ib, jb) - cx(ia, ja)), cy(ia, ja) + t * (cy(ib, jb) - cy(ia, ja))]); }
+        }
+        for (let k = 0; k + 1 < pts.length; k += 2) { ctx.moveTo(X(pts[k][0]), Y(pts[k][1])); ctx.lineTo(X(pts[k + 1][0]), Y(pts[k + 1][1])); }
+      }
+      ctx.stroke();
+    }
+    // Billig shock shape
+    ctx.strokeStyle = "#ff5b5b"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.beginPath();
+    let first = true;
+    for (let k = 0; k <= 160; k++) {
+      const y = -rO + 2 * rO * k / 160, x = BB.billigShockX(M, y);
+      if (Math.hypot(x, y) > rO || x > 0.05) { first = true; continue; }
+      if (first) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); first = false;
+    }
+    ctx.stroke(); ctx.setLineDash([]);
+    // cylinder
+    ctx.fillStyle = C.chip; ctx.strokeStyle = C.ink; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let k = 0; k <= 60; k++) { const t = -Math.PI / 2 + Math.PI * k / 60; const px = X(-Math.cos(t)), py = Y(Math.sin(t)); k ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.restore();
+    // legend (top-left inside the frame, on a surface chip)
+    const lx = X(x0) + 8, ly = Y(y1) + 8;
+    ctx.font = "500 11px " + mono(); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    const items = [["#ffffff", [], "sonic line (M = 1)"], ["#ff5b5b", [6, 4], "Billig shock shape"]];
+    const bw = 168, bh = 44;
+    ctx.fillStyle = "rgba(10,14,20,0.55)"; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(lx, ly, bw, bh, 4) : ctx.rect(lx, ly, bw, bh); ctx.fill();
+    items.forEach(([col, dash, t], k) => {
+      const yy = ly + 13 + k * 18;
+      ctx.strokeStyle = col; ctx.lineWidth = 1.6; ctx.setLineDash(dash); ctx.beginPath(); ctx.moveTo(lx + 8, yy); ctx.lineTo(lx + 30, yy); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle = "#ffffff"; ctx.fillText(t, lx + 38, yy);
+    });
+    // colorbar
+    const cbx = Math.min(w - 44, X(x1) + 16), cby = m.t + 10, cbh = Math.min(ph - 20, 300), cbw = 12;
+    for (let k = 0; k < cbh; k++) { ctx.fillStyle = vir(1 - k / cbh); ctx.fillRect(cbx, cby + k, cbw, 1.2); }
+    ctx.strokeStyle = C.rule; ctx.strokeRect(cbx + 0.5, cby + 0.5, cbw, cbh);
+    ctx.fillStyle = C.muted; ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    for (const v of ticks(0, vmax, 4)) { if (v > vmax) continue; ctx.fillText(lab(v), cbx + cbw + 5, cby + cbh * (1 - v / vmax)); }
+    ctx.textBaseline = "bottom"; ctx.fillText("M", cbx, cby - 4);
+  }
+
+  function frame(ctx, w, h, title, m) {
+    ctx.font = "600 13px " + disp(); ctx.textAlign = "left"; ctx.textBaseline = "alphabetic"; ctx.fillStyle = css().ink;
+    ctx.fillText(title, m.l, 17);
+  }
+
+  function drawStand(C, cur) {
+    const { ctx, w, h } = setup($("bbStand"));
+    const m = { l: 50, r: 14, t: 28, b: 34 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    const xlo = 1.8, xhi = 8.5, ylo = 0.3, yhi = 1.6;
+    const X = x => m.l + (x - xlo) / (xhi - xlo) * pw, Y = y => m.t + (1 - (y - ylo) / (yhi - ylo)) * ph;
+    ctx.font = "500 11px " + mono(); ctx.lineWidth = 1;
+    ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (const v of ticks(ylo, yhi, 4)) { const y = Math.round(Y(v)) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke(); ctx.fillText(lab(v), m.l - 6, y); }
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const v of [2, 3, 4, 5, 6, 7, 8]) { const x = Math.round(X(v)) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph); ctx.stroke(); ctx.fillText(String(v), x, m.t + ph + 6); }
+    ctx.fillText("free-stream Mach number", m.l + pw / 2, m.t + ph + 20);
+    ctx.strokeStyle = C.rule; ctx.strokeRect(m.l + 0.5, m.t + 0.5, pw - 1, ph - 1);
+    frame(ctx, w, h, "Shock standoff Δ/R", m);
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, pw, ph); ctx.clip();
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.beginPath();
+    for (let k = 0; k <= 120; k++) { const M = xlo + (xhi - xlo) * k / 120, y = BB.billigStandoff(M); k ? ctx.lineTo(X(M), Y(y)) : ctx.moveTo(X(M), Y(y)); }
+    ctx.stroke();
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1.4;
+    for (const [M, d] of REPO) { ctx.beginPath(); ctx.arc(X(M), Y(d), 4.5, 0, 6.2832); ctx.stroke(); }
+    // all finished browser runs (HLL), current one larger
+    for (const r of cache.values()) {
+      if (!Number.isFinite(r.standoff)) continue;
+      const isCur = run && r.key === run.key;
+      ctx.fillStyle = r.flux === "hllc" ? C.b : C.a;
+      ctx.beginPath(); ctx.arc(X(r.M), Y(r.standoff), isCur ? 5.5 : 3.5, 0, 6.2832); ctx.fill();
+      if (isCur) { ctx.strokeStyle = C.surface; ctx.lineWidth = 1.5; ctx.stroke(); }
+    }
+    ctx.restore();
+    // legend
+    ctx.font = "500 11px " + mono(); ctx.textBaseline = "middle"; ctx.textAlign = "left";
+    const lx = m.l + pw - 196, ly = m.t + 14;
+    ctx.strokeStyle = C.ink; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(lx, ly); ctx.lineTo(lx + 18, ly); ctx.stroke();
+    ctx.fillStyle = C.ink; ctx.fillText("Billig (1967)", lx + 26, ly);
+    ctx.strokeStyle = C.muted; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(lx + 9, ly + 17, 4.5, 0, 6.2832); ctx.stroke();
+    ctx.fillText("repository, 96 × 144", lx + 26, ly + 17);
+    ctx.fillStyle = C.a; ctx.beginPath(); ctx.arc(lx + 9, ly + 34, 4, 0, 6.2832); ctx.fill();
+    ctx.fillStyle = C.ink; ctx.fillText("your runs here", lx + 26, ly + 34);
+  }
+
+  function drawRes(C, cur) {
+    const { ctx, w, h } = setup($("bbRes"));
+    const m = { l: 50, r: 28, t: 28, b: 34 }, pw = w - m.l - m.r, ph = h - m.t - m.b;
+    frame(ctx, w, h, "Density residual (relative to first iteration)", m);
+    const res = cur ? cur.res : [], its = cur && cur.resIt ? cur.resIt : res.map((_, k) => k + 1);
+    const xhi = Math.max(2000, Math.ceil((its.length ? its[its.length - 1] : 0) / 1000) * 1000), lo = -5, hi = 1;
+    const X = x => m.l + x / xhi * pw, Y = v => m.t + (1 - (Math.log10(Math.max(v, 1e-12)) - lo) / (hi - lo)) * ph;
+    ctx.font = "500 11px " + mono(); ctx.lineWidth = 1;
+    ctx.fillStyle = C.muted; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    for (let e = lo; e <= hi; e++) { const y = Math.round(Y(Math.pow(10, e))) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(m.l + pw, y); ctx.stroke(); ctx.fillText(e === 0 ? "1" : "1e" + e, m.l - 6, y); }
+    ctx.textAlign = "center"; ctx.textBaseline = "top";
+    for (const v of ticks(0, xhi, 4)) { const x = Math.round(X(v)) + 0.5; ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x, m.t); ctx.lineTo(x, m.t + ph); ctx.stroke(); ctx.fillText(n0(v), x, m.t + ph + 6); }
+    ctx.fillText("iteration", m.l + pw / 2, m.t + ph + 20);
+    ctx.strokeStyle = C.rule; ctx.strokeRect(m.l + 0.5, m.t + 0.5, pw - 1, ph - 1);
+    ctx.save(); ctx.beginPath(); ctx.rect(m.l, m.t, pw, ph); ctx.clip();
+    // second order on + tolerance
+    ctx.strokeStyle = C.muted; ctx.setLineDash([2, 3]);
+    ctx.beginPath(); ctx.moveTo(X(1500) + 0.5, m.t); ctx.lineTo(X(1500) + 0.5, m.t + ph); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(m.l, Y(1e-4) + 0.5); ctx.lineTo(m.l + pw, Y(1e-4) + 0.5); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = C.muted; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.fillText("second order on", X(1500) + 5, m.t + 5);
+    ctx.textBaseline = "bottom"; ctx.fillText("target 1e-4", m.l + 6, Y(1e-4) - 3);
+    if (res.length) {
+      ctx.strokeStyle = cur.flux === "hllc" || S.flux === "hllc" ? C.b : C.a; ctx.lineWidth = 1.4; ctx.beginPath();
+      const step = Math.max(1, Math.floor(res.length / 1500));
+      for (let k = 0; k < res.length; k += step) { const x = X(its[k]), y = Y(res[k]); k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function draw() {
+    if ($("view2d").hidden) return;
+    const C = css(), cur = current();
+    drawField(C, cur); drawStand(C, cur); drawRes(C, cur);
+  }
+
+  let rz = null;
+  new ResizeObserver(() => { cancelAnimationFrame(rz); rz = requestAnimationFrame(draw); }).observe($("view2d"));
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  showTab(/blunt/.test(location.hash) ? "2d" : "1d");
 })();
 </script>
