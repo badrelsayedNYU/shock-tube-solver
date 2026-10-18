@@ -4,7 +4,7 @@
 
 A finite-volume, shock-capturing solver for the one-dimensional compressible Euler equations, validated against an exact Riemann solver. It compares three numerical fluxes (Rusanov, Roe, HLLC) and four reconstructions (first order, minmod, van Leer, superbee) for accuracy, convergence, cost, and how sharply each one resolves shocks, contact discontinuities and expansion fans. It also documents two well-known ways the Roe solver fails.
 
-*Badr Elsayed. Python 3.11+ / NumPy, fully vectorized; 57 automated tests.*
+*Badr Elsayed. Python 3.11+ / NumPy, fully vectorized; 65 automated tests (57 for the 1D solver, 8 for the 2D blunt-body extension).*
 
 ![Sod shock tube: first- vs. second-order HLLC against the exact solution](figures/sod_first_vs_second_order.png)
 
@@ -167,13 +167,47 @@ Without the fix, Roe produces a jump about 5 times larger than the exact change 
 - **Positivity fallback.** In all 33 completed second-order runs (four cases × three fluxes × three limiters at N = 400, minus Roe on the 123 problem), including the strong blast, the reconstruction fallback triggered **zero** times. This is expected rather than lucky: the TVD condition $\phi \le \min(2r, 2)$ keeps every reconstructed face value between the neighboring cell averages, so positive data stay positive. The fallback is tested directly with forced inputs and remains as a safeguard for less constrained reconstructions such as WENO.
 - **Limiter side effect.** Each primitive variable is limited separately, so derived quantities such as $e = p/((\gamma-1)\rho)$ are not bounded. Superbee overshoots $e$ just behind the Sod contact by about 5% at N = 100 (visible in the figure at the top of this page).
 
+## Extension: supersonic flow over a cylinder (2D)
+
+The same building blocks (MUSCL reconstruction, approximate Riemann fluxes, SSP-RK2) are extended to two dimensions in `src/shocktube/blunt2d.py` to solve the **blunt-body problem**: a detached bow shock stands ahead of a circular cylinder, with a subsonic pocket at the nose and supersonic flow around the shoulders. This is the flow in my research on extending a strongly implicit method to supersonic blunt bodies, so this solver also serves as an independent reference for it.
+
+![Mach number around a cylinder at M = 4, with Billig's shock shape](figures/blunt_mach_M4.png)
+
+**Method.** Cell-centred finite volume on a body-fitted polar grid over the windward half of the cylinder (radial cells clustered at the wall), with face vectors from node differences so uniform flow is preserved to round-off. Face states come from van Leer–limited MUSCL reconstruction in each grid direction, rotated into the face-normal frame for the flux. Boundaries: slip wall, free stream on the outer arc, supersonic outflow on the plane x = 0. A first-order phase sets up the shock, then the second-order scheme is marched to steady state with local time steps.
+
+**What it is validated against.**
+- **Stagnation pressure vs. the exact Rayleigh pitot formula.** Behind a normal shock the flow decelerates isentropically to the stagnation point, so the wall pressure there has an exact value for an inviscid perfect gas. This is the solver's exact check.
+- **Shock standoff vs. Billig's correlation**, Δ/R = 0.386 exp(4.67/M∞²) (Billig, 1967). This is a curve fit to experimental data, not an exact solution, so agreement within a few percent is the realistic target.
+- **Grid independence**, checked on three grids at M = 3.
+
+| M∞ | Standoff Δ/R | Billig | Difference | p₀/p∞ | Pitot (exact) | Difference |
+|---|---|---|---|---|---|---|
+| 2 | 1.325 | 1.241 | +6.8% | 5.64 | 5.64 | +0.02% |
+| 3 | 0.697 | 0.649 | +7.4% | 12.04 | 12.06 | −0.15% |
+| 4 | 0.541 | 0.517 | +4.7% | 21.05 | 21.07 | −0.10% |
+| 6 | 0.445 | 0.439 | +1.3% | 46.74 | 46.82 | −0.16% |
+| 8 | 0.416 | 0.415 | +0.1% | 81.66 | 82.87 | −1.45% |
+
+96 × 144 grid, HLL flux with van Leer reconstruction. Full tables, including the grid study, are in [results/blunt_body.md](results/blunt_body.md).
+
+![Shock standoff against Billig's correlation](figures/blunt_standoff.png)
+
+The stagnation pressure matches the exact value to 0.2% or better up to M = 6. The standoff distance is grid-independent (0.703, 0.701 and 0.697 on 32 × 48, 64 × 96 and 128 × 192 grids at M = 3) and lies above Billig's correlation by about 7% at M = 2–3, closing to within 1–2% at M = 6–8. Because refinement does not move it, the remaining gap at low Mach number is a difference between this inviscid model and the experimental correlation rather than a discretization error. At M = 8 the residual stalls before the convergence target and the stagnation pressure is 1.5% low, so that point is less reliable than the others.
+
+**A 2D failure mode: HLLC and the carbuncle.** HLLC was the best flux in 1D, but on the blunt body at M = 6 it never converges: the residual stalls near 3 × 10⁻², a disturbance appears along the stagnation line just behind the shock, and the stagnation pressure comes out 4.5% above the exact value. This is the start of the well-known carbuncle instability of contact-resolving fluxes at strong, grid-aligned shocks. HLL, which has no contact wave and is more dissipative there, converges cleanly to −0.16% on the same case. The 2D default is therefore HLL; a practical next step is a hybrid that switches HLLC to HLL only near strong shocks.
+
+```bash
+python scripts/blunt_body.py --quick   # coarse grid study + Mach sweep, ~3 min
+python scripts/blunt_body.py           # full grid study + Mach sweep, ~25 min
+```
+
 ## Takeaways
 
 **Which scheme I would choose: HLLC with van Leer reconstruction and SSP-RK2.** HLLC matches Roe's accuracy on every test that both complete (within 10% in L1, and contact widths within one cell) and was the only sharp-contact flux that survived all four problems: it needs no entropy fix at sonic points and stays positive near vacuum, where Roe breaks on its first step. Among the limiters, superbee gives the lowest error on Sod, but it does so by over-steepening. It squares off smooth profiles (its order on the smooth wave is 1.85 against van Leer's 2.01) and overshoots internal energy at contacts. Van Leer is the better default when the solution mixes smooth regions and discontinuities, which is the situation in real aerodynamic flows. Rusanov remains useful as a fallback flux in the strongest shocks because it is the most dissipative and the simplest, but its contact smearing rules it out as the primary flux in this comparison.
 
 **What I would build next.**
 1. **Quasi-1D nozzle flow:** add the area-variation source term and capture a normal shock in a converging–diverging nozzle, validated against the isentropic and normal-shock relations. This is the first step toward internal-flow problems such as inlets and scramjet isolators.
-2. **Two dimensions:** dimension-by-dimension fluxes on structured grids, for problems such as oblique shocks, a supersonic wedge, and the double Mach reflection.
+2. **More two-dimensional problems:** the blunt-body extension above is a start; next are oblique shocks on a supersonic wedge, the double Mach reflection, and a hybrid HLLC/HLL flux that avoids the carbuncle.
 3. **Higher order:** WENO5 reconstruction compared against MUSCL, plus the Shu–Osher shock/entropy-wave problem, where resolving small-scale structure behind a shock separates the schemes.
 4. **Real-gas effects:** a variable-γ or equilibrium-air equation of state, which matters in hypersonic flow (roughly Mach 5 and above), where vibrational excitation and dissociation break the calorically perfect gas assumption.
 
@@ -182,7 +216,7 @@ Without the fix, Roe produces a jump about 5 times larger than the exact change 
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest                                   # 57 tests
+pytest                                   # 65 tests
 python scripts/make_figures.py           # every figure in figures/ and table in results/ (~30 s)
 python scripts/run_case.py --case sod --flux hllc --limiter vanleer --N 400 --plot sod.png
 ```
