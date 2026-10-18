@@ -2,6 +2,8 @@
 
 **[▶ Try it in your browser](https://badrelsayednyu.github.io/shock-tube-solver/)** — interactive version that runs the same model live.
 
+**[1D numerical studies](https://badrelsayednyu.github.io/shock-tube-solver/studies.html)** runs grid convergence, all 12 flux/limiter combinations, and mass, momentum and energy budgets with CSV export. Conservation uses time-integrated boundary fluxes with the same stage weights as the solver; failed runs are reported without final-time error metrics. The studies reuse the lab solver, extracted by `python scripts/build_studies_core.py`, with 15 additional browser-model tests (`node --test tests/test_browser_studies.cjs`).
+
 A finite-volume, shock-capturing solver for the one-dimensional compressible Euler equations, validated against an exact Riemann solver. It compares three numerical fluxes (Rusanov, Roe, HLLC) and four reconstructions (first order, minmod, van Leer, superbee) for accuracy, convergence, cost, and how sharply each one resolves shocks, contact discontinuities and expansion fans. It also documents two well-known ways the Roe solver fails.
 
 *Badr Elsayed. Python 3.11+ / NumPy, fully vectorized; 65 automated tests (57 for the 1D solver, 8 for the 2D blunt-body extension).*

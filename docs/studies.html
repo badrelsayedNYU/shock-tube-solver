@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shock Tube Studies</title>
+<style>
+  :root { color-scheme: light dark; font: 16px/1.55 system-ui,sans-serif; }
+  body { max-width: 1100px; margin: auto; padding: 24px; background: light-dark(#faf9f6,#14181e); color: light-dark(#202933,#e2e7ed); }
+  a { color: light-dark(#176697,#8bcefa); } h1,h2 { line-height: 1.2; }
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+  label { display: grid; gap: 4px; } select,button { padding: 10px; font: inherit; }
+  button { cursor:pointer; } section { margin: 28px 0; padding: 20px; border: 1px solid #70809070; border-radius: 8px; }
+  .scroll { overflow-x: auto; } table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th,td { border-bottom: 1px solid #70809050; padding: 9px; text-align: right; white-space: nowrap; }
+  th:first-child,td:first-child { text-align:left; } caption { text-align: left; margin: 10px 0; }
+  canvas { display: block; width: 100%; height: 310px; } [hidden] { display:none!important; }
+  #status { min-height: 1.6em; } .hint { opacity: .8; } input { width: 18px; height:18px; }
+</style>
+<header>
+  <a href="./">← Shock Tube Lab</a> · <a href="https://github.com/badrelsayedNYU/shock-tube-solver">Source & validation</a>
+  <h1>Shock Tube Studies</h1>
+  <p>Compare numerical schemes, measure grid convergence, and check the open-system conservation budget. These studies use the same 1D solver as the lab.</p>
+</header>
+<section aria-label="Study settings">
+  <div class="controls">
+    <label>Riemann problem<select id="case"><option value="sod">Sod</option><option value="123">123 problem</option><option value="blast">Strong blast</option><option value="modsod">Modified Sod</option></select></label>
+    <label>Flux<select id="flux"><option value="hllc">HLLC</option><option value="roe">Roe</option><option value="rusanov">Rusanov</option></select></label>
+    <label>Reconstruction<select id="limiter"><option value="vanleer">van Leer</option><option value="none">First order</option><option value="minmod">minmod</option><option value="superbee">superbee</option></select></label>
+    <label>Comparison grid<select id="grid"><option>100</option><option>200</option><option selected>400</option><option>800</option></select></label>
+    <label><span>Roe entropy fix</span><input type="checkbox" id="fix" checked aria-label="Roe entropy fix"></label>
+    <button id="run">Run studies</button>
+  </div>
+  <p id="status" role="status">Ready. Runs locally in your browser.</p>
+  <p class="hint">γ = 1.4; nondimensional units on x ∈ [0, 1]; transmissive boundaries. First order uses forward Euler (CFL 0.8); MUSCL uses SSP-RK2 (CFL 0.5). The Roe fix uses δ = 0.1ã. Convergence uses 50, 100, 200, 400 and 800 cells.</p>
+</section>
+<main id="results" hidden>
+  <p id="caption"></p>
+  <section>
+    <h2>Grid convergence</h2>
+    <p>L1 errors are cell-center differences from the exact Riemann solution, integrated with Δx. Observed order is log(error ratio) / log(grid ratio). Discontinuities reduce global convergence order even for second-order reconstruction. Failed runs have no error or order.</p>
+    <canvas id="convergence" aria-label="Density L1 error against grid cells, logarithmic axes"></canvas>
+    <div class="scroll"><table><thead><tr><th>Cells</th><th>Density L1</th><th>Velocity L1</th><th>Pressure L1</th><th>Density order</th><th>Status</th></tr></thead><tbody id="convergenceRows"></tbody></table></div>
+  </section>
+  <section>
+    <h2>Flux × reconstruction</h2>
+    <p>All 12 combinations at the comparison grid and each case's final time. Change one factor at a time to separate the effect of flux from reconstruction. Positivity failures retain their location and time rather than appearing as a successful comparison.</p>
+    <div class="scroll"><table><thead><tr><th>Scheme</th><th>Density L1</th><th>Velocity L1</th><th>Pressure L1</th><th>Steps</th><th>Status</th></tr></thead><tbody id="schemeRows"></tbody></table></div>
+  </section>
+  <section>
+    <h2>Mass, momentum & energy budget</h2>
+    <p>For the selected scheme at the comparison grid: change in domain total must equal the time-integrated inflow minus outflow. These are open boundaries, so the domain totals can change. Boundary flux uses the same Euler or RK2 stage weights as the update; the residual should be near floating-point roundoff.</p>
+    <p id="budgetStatus"></p>
+    <div class="scroll"><table><thead><tr><th>Quantity</th><th>Initial</th><th>Final</th><th>Change</th><th>Boundary integral</th><th>Residual</th></tr></thead><tbody id="budgetRows"></tbody></table></div>
+  </section>
+  <a id="download" download="shock_tube_studies.csv">Download study CSV</a>
+</main>
+<script src="studies-core.js"></script>
+<script src="studies.js"></script>
+</html>
